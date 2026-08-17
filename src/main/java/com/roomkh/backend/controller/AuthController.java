@@ -1,5 +1,7 @@
 package com.roomkh.backend.controller;
 
+import com.roomkh.backend.dto.auth.LoginRequest;
+import com.roomkh.backend.dto.auth.LoginResponse;
 import com.roomkh.backend.dto.auth.RegisterRequest;
 import com.roomkh.backend.dto.auth.UserResponse;
 import com.roomkh.backend.dto.comon.ApiResponse;
@@ -29,5 +31,12 @@ public class AuthController {
         UserResponse userResponse = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User registered successfully.", userResponse));
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "Login with email and password")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse loginResponse = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Login successful.", loginResponse));
     }
 }
