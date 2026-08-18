@@ -25,3 +25,8 @@ logging:
   level:
     org.springframework: INFO
     com.roomkh.backend: DEBUG
+
+app:
+  cookie:
+    secure: false
+    same-site: Lax

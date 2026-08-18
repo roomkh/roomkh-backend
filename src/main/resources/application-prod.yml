@@ -20,3 +20,8 @@ logging:
   level:
     org.springframework: WARN
     com.roomkh.backend: INFO
+
+app:
+  cookie:
+    secure: true
+    same-site: Lax
