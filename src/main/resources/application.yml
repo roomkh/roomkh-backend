@@ -3,6 +3,8 @@ spring:
     name: roomkh-backend
   profiles:
     active: dev
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 
 server:
   port: 8081

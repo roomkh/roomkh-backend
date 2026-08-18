@@ -1,9 +1,8 @@
 package com.roomkh.backend.controller;
 
+import com.roomkh.backend.dto.auth.AuthResponse;
 import com.roomkh.backend.dto.auth.LoginRequest;
-import com.roomkh.backend.dto.auth.LoginResponse;
 import com.roomkh.backend.dto.auth.RegisterRequest;
-import com.roomkh.backend.dto.auth.UserResponse;
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,16 +26,16 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user")
-    public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        UserResponse userResponse = authService.register(request);
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        AuthResponse authResponse = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("User registered successfully.", userResponse));
+                .body(ApiResponse.success("Registration successful.", authResponse));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login with email and password")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse loginResponse = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success("Login successful.", loginResponse));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse authResponse = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Login successful.", authResponse));
     }
 }

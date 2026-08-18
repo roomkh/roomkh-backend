@@ -1,15 +1,15 @@
 package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.config.JwtProperties;
+import com.roomkh.backend.dto.auth.AuthResponse;
 import com.roomkh.backend.dto.auth.LoginRequest;
-import com.roomkh.backend.dto.auth.LoginResponse;
 import com.roomkh.backend.dto.auth.RegisterRequest;
-import com.roomkh.backend.dto.auth.UserResponse;
 import com.roomkh.backend.entity.AccountStatus;
 import com.roomkh.backend.entity.AuthProvider;
 import com.roomkh.backend.entity.Role;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.entity.User;
+import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.DuplicateResourceException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.UserMapper;
@@ -37,9 +37,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public UserResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request) {
+        if (!request.getPassword().equals(request.getPasswordConfirmation())) {
+            throw new BadRequestException("Password confirmation does not match.");
+        }
+
         if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
-            throw new DuplicateResourceException("An account with this email already exists.");
+            throw new DuplicateResourceException("Email already exists.");
         }
 
         String phoneNumber = normalizePhoneNumber(request.getPhoneNumber());
@@ -63,11 +67,19 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
-        return userMapper.toUserResponse(savedUser);
+
+        String accessToken = jwtService.generateToken(savedUser.getId(), savedUser.getEmail(), savedUser.getRole().getName());
+
+        return AuthResponse.builder()
+                .user(userMapper.toUserResponse(savedUser))
+                .accessToken(accessToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtProperties.getExpirationMs())
+                .build();
     }
 
     @Override
-    public LoginResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmailIgnoreCase(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
 
@@ -85,11 +97,11 @@ public class AuthServiceImpl implements AuthService {
 
         String accessToken = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().getName());
 
-        return LoginResponse.builder()
+        return AuthResponse.builder()
+                .user(userMapper.toUserResponse(user))
                 .accessToken(accessToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtProperties.getExpirationMs())
-                .user(userMapper.toUserResponse(user))
                 .build();
     }
 
