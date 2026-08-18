@@ -18,10 +18,13 @@ public class RegisterRequest {
     @Email(message = "Email must be a valid email address.")
     private String email;
 
+    @Size(max = 20, message = "Phone number must not exceed 20 characters.")
+    private String phoneNumber;
+
     @NotBlank(message = "Password is required.")
     @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters.")
     private String password;
 
-    @Size(max = 20, message = "Phone number must not exceed 20 characters.")
-    private String phoneNumber;
+    @NotBlank(message = "Password confirmation is required.")
+    private String passwordConfirmation;
 }
