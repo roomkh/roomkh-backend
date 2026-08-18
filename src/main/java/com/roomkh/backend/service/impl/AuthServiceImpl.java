@@ -1,5 +1,8 @@
 package com.roomkh.backend.service.impl;
 
+import com.roomkh.backend.config.JwtProperties;
+import com.roomkh.backend.dto.auth.LoginRequest;
+import com.roomkh.backend.dto.auth.LoginResponse;
 import com.roomkh.backend.dto.auth.RegisterRequest;
 import com.roomkh.backend.dto.auth.UserResponse;
 import com.roomkh.backend.entity.AccountStatus;
@@ -12,8 +15,11 @@ import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.UserMapper;
 import com.roomkh.backend.repository.RoleRepository;
 import com.roomkh.backend.repository.UserRepository;
+import com.roomkh.backend.security.JwtService;
 import com.roomkh.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +32,8 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final JwtService jwtService;
+    private final JwtProperties jwtProperties;
 
     @Override
     @Transactional
@@ -56,6 +64,33 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
         return userMapper.toUserResponse(savedUser);
+    }
+
+    @Override
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepository.findByEmailIgnoreCase(request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+
+        if (user.getAuthProvider() != AuthProvider.LOCAL) {
+            throw new BadCredentialsException("Invalid email or password.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid email or password.");
+        }
+
+        if (user.getAccountStatus() == AccountStatus.INACTIVE) {
+            throw new AccessDeniedException("This account is inactive.");
+        }
+
+        String accessToken = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().getName());
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtProperties.getExpirationMs())
+                .user(userMapper.toUserResponse(user))
+                .build();
     }
 
     private String normalizePhoneNumber(String rawPhoneNumber) {
