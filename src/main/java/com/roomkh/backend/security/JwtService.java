@@ -23,13 +23,12 @@ public class JwtService {
         return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Long userId, String email, RoleName role) {
+    public String generateToken(Long userId, RoleName role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getExpirationMs());
 
         return Jwts.builder()
-                .subject(email)
-                .claim("userId", userId)
+                .subject(String.valueOf(userId))
                 .claim("role", role.name())
                 .issuedAt(now)
                 .expiration(expiry)
@@ -45,16 +44,9 @@ public class JwtService {
                 .getPayload();
     }
 
-    public String extractEmail(String token) {
-        return extractAllClaims(token).getSubject();
-    }
-
     public Long extractUserId(String token) {
-        Object rawUserId = extractAllClaims(token).get("userId");
-        if (rawUserId instanceof Integer intValue) {
-            return intValue.longValue();
-        }
-        return (Long) rawUserId;
+        String subject = extractAllClaims(token).getSubject();
+        return Long.valueOf(subject);
     }
 
     public String extractRole(String token) {

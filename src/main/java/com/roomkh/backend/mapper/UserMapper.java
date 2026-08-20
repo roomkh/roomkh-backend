@@ -14,9 +14,8 @@ public class UserMapper {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole().getName())
+                .sellerStatus(user.getSellerStatus())
                 .authProvider(user.getAuthProvider())
-                .accountStatus(user.getAccountStatus())
-                .createdAt(user.getCreatedAt())
                 .build();
     }
 }
