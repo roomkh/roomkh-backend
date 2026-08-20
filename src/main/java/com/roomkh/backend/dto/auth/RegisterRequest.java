@@ -1,6 +1,5 @@
 package com.roomkh.backend.dto.auth;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -14,12 +13,8 @@ public class RegisterRequest {
     @Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters.")
     private String fullName;
 
-    @NotBlank(message = "Email is required.")
-    @Email(message = "Email must be a valid email address.")
-    private String email;
-
-    @Size(max = 20, message = "Phone number must not exceed 20 characters.")
-    private String phoneNumber;
+    @NotBlank(message = "Identifier is required.")
+    private String identifier;
 
     @NotBlank(message = "Password is required.")
     @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters.")

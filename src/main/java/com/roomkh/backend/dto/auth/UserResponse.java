@@ -1,14 +1,12 @@
 package com.roomkh.backend.dto.auth;
 
-import com.roomkh.backend.entity.AccountStatus;
 import com.roomkh.backend.entity.AuthProvider;
 import com.roomkh.backend.entity.RoleName;
+import com.roomkh.backend.entity.SellerStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -20,7 +18,6 @@ public class UserResponse {
     private String email;
     private String phoneNumber;
     private RoleName role;
+    private SellerStatus sellerStatus;
     private AuthProvider authProvider;
-    private AccountStatus accountStatus;
-    private LocalDateTime createdAt;
 }
