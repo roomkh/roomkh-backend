@@ -30,3 +30,5 @@ app:
   cookie:
     secure: false
     same-site: Lax
+  security:
+    trust-proxy-headers: false

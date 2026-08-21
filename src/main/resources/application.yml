@@ -24,3 +24,8 @@ app:
     session-expiration-hours: 24
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN}
+  security:
+    max-failed-attempts: 5
+    failed-attempt-window-minutes: 15
+    block-duration-hours: 24
+    rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
