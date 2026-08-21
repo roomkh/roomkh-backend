@@ -8,9 +8,11 @@ import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.security.RefreshTokenCookieUtil;
 import com.roomkh.backend.service.AuthService;
 import com.roomkh.backend.service.AuthenticationResult;
+import com.roomkh.backend.service.ClientIpResolver;
 import com.roomkh.backend.service.RefreshResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final RefreshTokenCookieUtil cookieUtil;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user")
@@ -42,10 +45,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login with email and password")
+    @Operation(summary = "Login with email or phone identifier")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
+                                                           HttpServletRequest httpRequest,
                                                            HttpServletResponse response) {
-        AuthenticationResult result = authService.login(request);
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        AuthenticationResult result = authService.login(request, clientIp);
         cookieUtil.addRefreshTokenCookie(response, result.getRawRefreshToken(), result.isRememberMe(), result.getRefreshTokenMaxAgeSeconds());
         return ResponseEntity.ok(ApiResponse.success("Login successful.", result.getAuthResponse()));
     }

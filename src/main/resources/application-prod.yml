@@ -25,3 +25,9 @@ app:
   cookie:
     secure: true
     same-site: Lax
+  # trust-proxy-headers must stay false until your reverse proxy (e.g. Nginx,
+  # a load balancer, or a cloud provider's edge network) is confirmed to
+  # strip and re-set X-Forwarded-For itself. Enabling this before that proxy
+  # is trusted lets any client fake their IP simply by sending that header.
+  security:
+    trust-proxy-headers: false

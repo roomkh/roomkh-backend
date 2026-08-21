@@ -21,6 +21,7 @@ import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.security.JwtService;
 import com.roomkh.backend.service.AuthService;
 import com.roomkh.backend.service.AuthenticationResult;
+import com.roomkh.backend.service.LoginSecurityService;
 import com.roomkh.backend.service.RefreshResult;
 import com.roomkh.backend.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenProperties refreshTokenProperties;
+    private final LoginSecurityService loginSecurityService;
 
     @Override
     @Transactional
@@ -93,16 +95,28 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthenticationResult login(LoginRequest request) {
-        User user = resolveUserForLogin(request.getIdentifier());
+    public AuthenticationResult login(LoginRequest request, String clientIp) {
+        String normalizedIdentifier = safeNormalizeIdentifier(request.getIdentifier());
 
-        if (user.getAuthProvider() != AuthProvider.LOCAL) {
+        loginSecurityService.assertNotBlocked(clientIp, normalizedIdentifier);
+
+        User user = null;
+        boolean credentialsValid = false;
+
+        try {
+            user = resolveUserForLogin(request.getIdentifier());
+            credentialsValid = user.getAuthProvider() == AuthProvider.LOCAL
+                    && passwordEncoder.matches(request.getPassword(), user.getPassword());
+        } catch (BadCredentialsException ex) {
+            credentialsValid = false;
+        }
+
+        if (!credentialsValid) {
+            loginSecurityService.recordFailedAttempt(clientIp, normalizedIdentifier);
             throw new BadCredentialsException("Invalid credentials.");
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials.");
-        }
+        loginSecurityService.recordSuccessfulLogin(clientIp, normalizedIdentifier);
 
         if (user.getAccountStatus() == AccountStatus.INACTIVE) {
             throw new AccessDeniedException("This account is inactive.");
@@ -181,6 +195,24 @@ public class AuthServiceImpl implements AuthService {
             }
         } catch (BadRequestException ex) {
             throw new BadCredentialsException("Invalid credentials.");
+        }
+    }
+
+    private String safeNormalizeIdentifier(String rawIdentifier) {
+        if (rawIdentifier == null) {
+            return null;
+        }
+        String trimmed = rawIdentifier.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            if (looksLikeEmail(trimmed)) {
+                return normalizeEmail(trimmed);
+            }
+            return normalizeCambodiaPhone(trimmed);
+        } catch (BadRequestException ex) {
+            return trimmed.toLowerCase();
         }
     }
 

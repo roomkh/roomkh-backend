@@ -39,7 +39,6 @@ The JWT's subject claim contains the user's numeric ID (not their email or phone
 ## Password Hashing
 
 User passwords are hashed with BCrypt before being stored. BCrypt is a one-way, salted hashing algorithm, meaning the original password can never be recovered from the stored hash, and even two users with an identical password will have different hash values in the database.
+## Login Rate Limiting
 
-## Future Security Work
-
-Rate limiting and IP blocking to prevent brute-force login attempts are **not implemented yet** and are planned as a future security enhancement.
+The login endpoint now enforces IP-based and identifier-based rate limiting: 5 failed attempts within 15 minutes trigger a 24-hour block, returning HTTP 429 with a `Retry-After` header. See [Login Security and Rate Limiting](../features/08-login-security-rate-limiting.md) for full details.
