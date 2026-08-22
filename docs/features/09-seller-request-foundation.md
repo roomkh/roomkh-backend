@@ -92,3 +92,7 @@ User role remains USER (no promotion yet)
 - [ ] Non-admin users receive 403 when calling admin endpoints
 
 ## Related Commit Message
+
+## Related Feature
+
+Submission attempts to this endpoint are now protected by rate limiting — see [Seller Request Rate Limiting](./10-seller-request-rate-limiting.md).

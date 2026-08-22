@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface SellerRequestService {
-    SellerRequestResponse submit(CreateSellerRequest request, Long authenticatedUserId);
+    SellerRequestResponse submit(CreateSellerRequest request, Long authenticatedUserId, String clientIp);
     Page<SellerRequestSummaryResponse> list(SellerRequestStatus status, String keyword, Pageable pageable);
     SellerRequestResponse getById(Long id);
 }

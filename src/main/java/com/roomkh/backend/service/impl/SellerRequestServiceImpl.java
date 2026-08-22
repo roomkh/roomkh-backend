@@ -13,6 +13,7 @@ import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.SellerRequestMapper;
 import com.roomkh.backend.repository.SellerRequestRepository;
 import com.roomkh.backend.repository.UserRepository;
+import com.roomkh.backend.service.SellerRequestRateLimitService;
 import com.roomkh.backend.service.SellerRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,10 +36,13 @@ public class SellerRequestServiceImpl implements SellerRequestService {
     private final SellerRequestRepository sellerRequestRepository;
     private final UserRepository userRepository;
     private final SellerRequestMapper sellerRequestMapper;
+    private final SellerRequestRateLimitService sellerRequestRateLimitService;
 
     @Override
     @Transactional
-    public SellerRequestResponse submit(CreateSellerRequest request, Long authenticatedUserId) {
+    public SellerRequestResponse submit(CreateSellerRequest request, Long authenticatedUserId, String clientIp) {
+        sellerRequestRateLimitService.checkAndRecordAttempt(clientIp, authenticatedUserId);
+
         User user = null;
 
         if (authenticatedUserId != null) {
