@@ -29,3 +29,9 @@ app:
     failed-attempt-window-minutes: 15
     block-duration-hours: 24
     rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
+  seller-request-rate-limit:
+    max-requests-per-minute: 10
+    hard-flood-requests-per-second: 100
+    max-requests-per-user-per-day: 3
+    ip-block-duration-hours: 24
+    rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}

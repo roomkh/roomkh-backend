@@ -4,9 +4,11 @@ import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.dto.seller.CreateSellerRequest;
 import com.roomkh.backend.dto.seller.SellerRequestResponse;
 import com.roomkh.backend.security.CustomUserDetails;
+import com.roomkh.backend.service.ClientIpResolver;
 import com.roomkh.backend.service.SellerRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,12 +27,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class SellerRequestController {
 
     private final SellerRequestService sellerRequestService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping
     @Operation(summary = "Submit a seller request (guest or logged-in USER)")
-    public ResponseEntity<ApiResponse<SellerRequestResponse>> submit(@Valid @RequestBody CreateSellerRequest request) {
+    public ResponseEntity<ApiResponse<SellerRequestResponse>> submit(@Valid @RequestBody CreateSellerRequest request,
+                                                                     HttpServletRequest httpRequest) {
         Long authenticatedUserId = resolveAuthenticatedUserId();
-        SellerRequestResponse response = sellerRequestService.submit(request, authenticatedUserId);
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        SellerRequestResponse response = sellerRequestService.submit(request, authenticatedUserId, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Seller request submitted successfully.", response));
     }
