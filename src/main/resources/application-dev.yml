@@ -32,3 +32,5 @@ app:
     same-site: Lax
   security:
     trust-proxy-headers: false
+  sms:
+    provider: development

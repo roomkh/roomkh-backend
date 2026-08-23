@@ -31,3 +31,6 @@ app:
   # is trusted lets any client fake their IP simply by sending that header.
   security:
     trust-proxy-headers: false
+
+  sms:
+    provider: not-configured
