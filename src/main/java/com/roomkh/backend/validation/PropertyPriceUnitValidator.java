@@ -1,15 +1,14 @@
 package com.roomkh.backend.validation;
 
-import com.roomkh.backend.dto.property.CreatePropertyRequest;
 import com.roomkh.backend.entity.PriceUnit;
 import com.roomkh.backend.entity.PropertyPurpose;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class PropertyPriceUnitValidator implements ConstraintValidator<ValidPropertyPriceUnit, CreatePropertyRequest> {
+public class PropertyPriceUnitValidator implements ConstraintValidator<ValidPropertyPriceUnit, PropertyPriceFields> {
 
     @Override
-    public boolean isValid(CreatePropertyRequest request, ConstraintValidatorContext context) {
+    public boolean isValid(PropertyPriceFields request, ConstraintValidatorContext context) {
         if (request == null || request.getPurpose() == null || request.getPriceUnit() == null) {
             return true;
         }

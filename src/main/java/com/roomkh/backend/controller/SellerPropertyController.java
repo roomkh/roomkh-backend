@@ -5,6 +5,7 @@ import com.roomkh.backend.dto.comon.PageMeta;
 import com.roomkh.backend.dto.property.CreatePropertyRequest;
 import com.roomkh.backend.dto.property.SellerPropertyListItemResponse;
 import com.roomkh.backend.dto.property.SellerPropertyResponse;
+import com.roomkh.backend.dto.property.UpdatePropertyRequest;
 import com.roomkh.backend.entity.PropertyStatus;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.security.CustomUserDetails;
@@ -86,6 +87,31 @@ public class SellerPropertyController {
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Seller properties retrieved successfully.", result.getPage().getContent(), meta));
+    }
+
+    @PutMapping("/{propertyId}")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Update an existing property",
+            description = "Updates a property owned by the authenticated SELLER. Only DRAFT or REJECTED properties " +
+                    "can be updated; PENDING, ACTIVE, and SOLD_RENTED properties return 409. The property's status " +
+                    "itself is never changed by this endpoint."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property updated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation failed or invalid amenity code"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or not owned by seller"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Property status is not editable")
+    })
+    public ResponseEntity<ApiResponse<SellerPropertyResponse>> updateProperty(
+            @PathVariable Long propertyId,
+            @Valid @RequestBody UpdatePropertyRequest request) {
+
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        SellerPropertyResponse response = sellerPropertyService.updateProperty(authenticatedUserId, propertyId, request);
+        return ResponseEntity.ok(ApiResponse.success("Property updated successfully.", response));
     }
 
     private PropertyStatus parseStatus(String rawStatus) {

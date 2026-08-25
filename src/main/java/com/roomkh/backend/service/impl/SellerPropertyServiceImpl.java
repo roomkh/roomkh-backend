@@ -7,6 +7,7 @@ import com.roomkh.backend.entity.PropertyStatus;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.entity.User;
 import com.roomkh.backend.exception.BadRequestException;
+import com.roomkh.backend.exception.DuplicateResourceException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.PropertyMapper;
 import com.roomkh.backend.repository.AmenityRepository;
@@ -43,12 +44,7 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     @Override
     @Transactional
     public SellerPropertyResponse createDraft(Long authenticatedUserId, CreatePropertyRequest request) {
-        User seller = userRepository.findById(authenticatedUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
-
-        if (seller.getRole().getName() != RoleName.SELLER) {
-            throw new BadRequestException("Only SELLER accounts can create properties.");
-        }
+        User seller = loadVerifiedSeller(authenticatedUserId);
 
         String normalizedCurrency = normalizeCurrency(request.getCurrency());
         Set<Amenity> amenities = resolveAmenities(request.getAmenityCodes());
@@ -94,12 +90,7 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     @Override
     public SellerPropertyListResult listProperties(Long authenticatedUserId, PropertyStatus status,
                                                    int page, int size, String sortBy) {
-        User seller = userRepository.findById(authenticatedUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
-
-        if (seller.getRole().getName() != RoleName.SELLER) {
-            throw new BadRequestException("Only SELLER accounts can view property listings.");
-        }
+        User seller = loadVerifiedSeller(authenticatedUserId);
 
         if (page < 1) {
             throw new BadRequestException("page must be at least 1.");
@@ -119,6 +110,79 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
         SellerPropertyStatusCountsResponse statusCounts = buildStatusCounts(seller.getId());
 
         return new SellerPropertyListResult(mappedPage, statusCounts);
+    }
+
+    @Override
+    @Transactional
+    public SellerPropertyResponse updateProperty(Long authenticatedUserId, Long propertyId, UpdatePropertyRequest request) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        Property property = propertyRepository.findByIdAndSellerId(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        if (property.getStatus() != PropertyStatus.DRAFT && property.getStatus() != PropertyStatus.REJECTED) {
+            throw new DuplicateResourceException("Only DRAFT or REJECTED properties can be updated.");
+        }
+
+        validateRequestedStatus(request.getStatus(), property.getStatus());
+
+        String normalizedCurrency = normalizeCurrency(request.getCurrency());
+        Set<Amenity> amenities = resolveAmenities(request.getAmenityCodes());
+
+        String trimmedTitle = request.getTitle().trim();
+        if (!property.getTitle().equals(trimmedTitle)) {
+            String newSlug = slugGenerator.generateUniqueSlug(trimmedTitle);
+            property.setSlug(newSlug);
+        }
+
+        property.setTitle(trimmedTitle);
+        property.setPurpose(request.getPurpose());
+        property.setPropertyType(request.getPropertyType());
+        property.setPrice(request.getPrice());
+        property.setCurrency(normalizedCurrency);
+        property.setPriceUnit(request.getPriceUnit());
+        property.setDescription(request.getDescription().trim());
+        property.setBedrooms(request.getBedrooms());
+        property.setBathrooms(request.getBathrooms());
+        property.setSizeSqm(request.getSizeSqm());
+        property.setFloor(request.getFloor());
+        property.setFurnished(request.isFurnished());
+        property.setAgeYears(request.getAgeYears());
+        property.setAddress(request.getAddress());
+        property.setProvince(request.getProvince().trim());
+        property.setDistrict(request.getDistrict().trim());
+        property.setCommune(request.getCommune().trim());
+        property.setLatitude(request.getLatitude());
+        property.setLongitude(request.getLongitude());
+
+        property.getAmenities().clear();
+        property.getAmenities().addAll(amenities);
+
+        Property saved = propertyRepository.save(property);
+        return propertyMapper.toSellerPropertyResponse(saved);
+    }
+
+    private void validateRequestedStatus(String requestedStatus, PropertyStatus currentStatus) {
+        if (requestedStatus == null || requestedStatus.isBlank()) {
+            return;
+        }
+        String normalized = requestedStatus.trim().toUpperCase();
+        if (!normalized.equals(currentStatus.name())) {
+            throw new BadRequestException(
+                    "Property status cannot be changed through this endpoint. It must remain " + currentStatus.name() + "."
+            );
+        }
+    }
+
+    private User loadVerifiedSeller(Long authenticatedUserId) {
+        User user = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
+
+        if (user.getRole().getName() != RoleName.SELLER) {
+            throw new BadRequestException("Only SELLER accounts can manage properties.");
+        }
+
+        return user;
     }
 
     private Sort resolveSort(String sortBy) {
