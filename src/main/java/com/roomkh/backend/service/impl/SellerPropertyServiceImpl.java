@@ -1,7 +1,6 @@
 package com.roomkh.backend.service.impl;
 
-import com.roomkh.backend.dto.property.CreatePropertyRequest;
-import com.roomkh.backend.dto.property.SellerPropertyResponse;
+import com.roomkh.backend.dto.property.*;
 import com.roomkh.backend.entity.Amenity;
 import com.roomkh.backend.entity.Property;
 import com.roomkh.backend.entity.PropertyStatus;
@@ -13,9 +12,14 @@ import com.roomkh.backend.mapper.PropertyMapper;
 import com.roomkh.backend.repository.AmenityRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.UserRepository;
+import com.roomkh.backend.service.SellerPropertyListResult;
 import com.roomkh.backend.service.SellerPropertyService;
 import com.roomkh.backend.service.SlugGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SellerPropertyServiceImpl implements SellerPropertyService {
+
+    private static final int MAX_PAGE_SIZE = 50;
 
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
@@ -83,6 +89,62 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
 
         Property saved = propertyRepository.save(property);
         return propertyMapper.toSellerPropertyResponse(saved);
+    }
+
+    @Override
+    public SellerPropertyListResult listProperties(Long authenticatedUserId, PropertyStatus status,
+                                                   int page, int size, String sortBy) {
+        User seller = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
+
+        if (seller.getRole().getName() != RoleName.SELLER) {
+            throw new BadRequestException("Only SELLER accounts can view property listings.");
+        }
+
+        if (page < 1) {
+            throw new BadRequestException("page must be at least 1.");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("size must be between 1 and 50.");
+        }
+
+        Sort sort = resolveSort(sortBy);
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+
+        Page<Property> propertyPage = status != null
+                ? propertyRepository.findBySeller_IdAndStatus(seller.getId(), status, pageable)
+                : propertyRepository.findBySeller_Id(seller.getId(), pageable);
+
+        Page<SellerPropertyListItemResponse> mappedPage = propertyPage.map(propertyMapper::toSellerPropertyListItemResponse);
+        SellerPropertyStatusCountsResponse statusCounts = buildStatusCounts(seller.getId());
+
+        return new SellerPropertyListResult(mappedPage, statusCounts);
+    }
+
+    private Sort resolveSort(String sortBy) {
+        SellerPropertySortBy resolved;
+        try {
+            resolved = SellerPropertySortBy.valueOf(sortBy.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid sort_by value. Allowed values: recently_updated, newest, price_asc, price_desc.");
+        }
+
+        return switch (resolved) {
+            case RECENTLY_UPDATED -> Sort.by(Sort.Direction.DESC, "updatedAt");
+            case NEWEST -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case PRICE_ASC -> Sort.by(Sort.Direction.ASC, "price").and(Sort.by(Sort.Direction.DESC, "updatedAt"));
+            case PRICE_DESC -> Sort.by(Sort.Direction.DESC, "price").and(Sort.by(Sort.Direction.DESC, "updatedAt"));
+        };
+    }
+
+    private SellerPropertyStatusCountsResponse buildStatusCounts(Long sellerId) {
+        return SellerPropertyStatusCountsResponse.builder()
+                .all(propertyRepository.countBySeller_Id(sellerId))
+                .active(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.ACTIVE))
+                .pending(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.PENDING))
+                .draft(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.DRAFT))
+                .soldRented(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.SOLD_RENTED))
+                .build();
     }
 
     private String normalizeCurrency(String rawCurrency) {

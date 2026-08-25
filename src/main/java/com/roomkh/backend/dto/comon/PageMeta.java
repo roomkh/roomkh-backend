@@ -1,5 +1,6 @@
 package com.roomkh.backend.dto.comon;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,12 +17,25 @@ public class PageMeta {
     private long total;
     private int totalPages;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Object statusCounts;
+
     public static PageMeta from(Page<?> page) {
         return PageMeta.builder()
                 .currentPage(page.getNumber() + 1)
                 .perPage(page.getSize())
                 .total(page.getTotalElements())
                 .totalPages(page.getTotalPages())
+                .build();
+    }
+
+    public static PageMeta from(Page<?> page, Object statusCounts) {
+        return PageMeta.builder()
+                .currentPage(page.getNumber() + 1)
+                .perPage(page.getSize())
+                .total(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .statusCounts(statusCounts)
                 .build();
     }
 }

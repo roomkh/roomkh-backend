@@ -1,11 +1,17 @@
 package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
+import com.roomkh.backend.dto.comon.PageMeta;
 import com.roomkh.backend.dto.property.CreatePropertyRequest;
+import com.roomkh.backend.dto.property.SellerPropertyListItemResponse;
 import com.roomkh.backend.dto.property.SellerPropertyResponse;
+import com.roomkh.backend.entity.PropertyStatus;
+import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.security.CustomUserDetails;
+import com.roomkh.backend.service.SellerPropertyListResult;
 import com.roomkh.backend.service.SellerPropertyService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -14,10 +20,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/seller/properties")
@@ -46,6 +51,52 @@ public class SellerPropertyController {
         SellerPropertyResponse response = sellerPropertyService.createDraft(authenticatedUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Property draft created successfully.", response));
+    }
+
+    @GetMapping
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "List the authenticated seller's own properties",
+            description = "Returns a paginated, sortable list of properties owned by the authenticated SELLER, " +
+                    "along with status counts for the Seller Home tabs. USER and ADMIN tokens receive 403 Forbidden."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Paginated seller property list"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status, page, size, or sort_by value"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER")
+    })
+    public ResponseEntity<ApiResponse<List<SellerPropertyListItemResponse>>> list(
+            @Parameter(description = "Filter by status: DRAFT, PENDING, ACTIVE, REJECTED, SOLD_RENTED")
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Page number, starting at 1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Items per page, 1-50")
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort order: recently_updated, newest, price_asc, price_desc")
+            @RequestParam(name = "sort_by", defaultValue = "recently_updated") String sortBy) {
+
+        PropertyStatus parsedStatus = parseStatus(status);
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+
+        SellerPropertyListResult result = sellerPropertyService.listProperties(
+                authenticatedUserId, parsedStatus, page, size, sortBy);
+
+        PageMeta meta = PageMeta.from(result.getPage(), result.getStatusCounts());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Seller properties retrieved successfully.", result.getPage().getContent(), meta));
+    }
+
+    private PropertyStatus parseStatus(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            return null;
+        }
+        try {
+            return PropertyStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid status value. Allowed values: DRAFT, PENDING, ACTIVE, REJECTED, SOLD_RENTED.");
+        }
     }
 
     private Long resolveAuthenticatedUserId() {
