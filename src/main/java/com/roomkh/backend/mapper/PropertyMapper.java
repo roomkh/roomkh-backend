@@ -1,5 +1,6 @@
 package com.roomkh.backend.mapper;
 
+import com.roomkh.backend.dto.property.SellerPropertyListItemResponse;
 import com.roomkh.backend.dto.property.SellerPropertyResponse;
 import com.roomkh.backend.entity.Amenity;
 import com.roomkh.backend.entity.Property;
@@ -42,6 +43,31 @@ public class PropertyMapper {
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
                 .amenities(amenityCodes)
+                .createdAt(property.getCreatedAt())
+                .updatedAt(property.getUpdatedAt())
+                .build();
+    }
+
+    public SellerPropertyListItemResponse toSellerPropertyListItemResponse(Property property) {
+        return SellerPropertyListItemResponse.builder()
+                .id(property.getId())
+                .title(property.getTitle())
+                .slug(property.getSlug())
+                .propertyType(property.getPropertyType())
+                .purpose(property.getPurpose())
+                .price(property.getPrice())
+                .currency(property.getCurrency())
+                .priceUnit(property.getPriceUnit())
+                .status(property.getStatus())
+                .province(property.getProvince())
+                .district(property.getDistrict())
+                .commune(property.getCommune())
+                .bedrooms(property.getBedrooms())
+                .bathrooms(property.getBathrooms())
+                .sizeSqm(property.getSizeSqm())
+                .coverImageUrl(null)
+                .viewCount(property.getViewCount())
+                .inquiryCount(property.getInquiryCount())
                 .createdAt(property.getCreatedAt())
                 .updatedAt(property.getUpdatedAt())
                 .build();
