@@ -18,7 +18,7 @@ import java.util.List;
 @Setter
 @ValidPropertyPriceUnit
 @ValidCoordinates
-public class CreatePropertyRequest implements PropertyPriceFields, PropertyCoordinateFields {
+public class UpdatePropertyRequest implements PropertyPriceFields, PropertyCoordinateFields {
 
     @NotBlank(message = "Title is required.")
     @Size(max = 255, message = "Title must not exceed 255 characters.")
@@ -85,8 +85,8 @@ public class CreatePropertyRequest implements PropertyPriceFields, PropertyCoord
     @Min(value = 0, message = "Age (years) cannot be negative.")
     private Integer ageYears;
 
+    @NotNull(message = "amenity_codes is required. Send an empty array to remove all amenities.")
     private List<String> amenityCodes;
 
-    @Pattern(regexp = "^DRAFT$", message = "Status must be DRAFT.")
     private String status;
 }

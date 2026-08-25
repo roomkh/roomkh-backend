@@ -1,13 +1,12 @@
 package com.roomkh.backend.validation;
 
-import com.roomkh.backend.dto.property.CreatePropertyRequest;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class CoordinatesValidator implements ConstraintValidator<ValidCoordinates, CreatePropertyRequest> {
+public class CoordinatesValidator implements ConstraintValidator<ValidCoordinates, PropertyCoordinateFields> {
 
     @Override
-    public boolean isValid(CreatePropertyRequest request, ConstraintValidatorContext context) {
+    public boolean isValid(PropertyCoordinateFields request, ConstraintValidatorContext context) {
         if (request == null) {
             return true;
         }
