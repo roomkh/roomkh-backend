@@ -42,6 +42,7 @@ public class SecurityConfig {
             "/api/v1/auth/logout",
             "/api/v1/seller-requests",
             "/api/v1/seller-requests/*/activate",
+            "/uploads/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",

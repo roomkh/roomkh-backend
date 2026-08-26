@@ -6,6 +6,11 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 server:
   port: 8081
 
@@ -35,3 +40,7 @@ app:
     max-requests-per-user-per-day: 3
     ip-block-duration-hours: 24
     rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
+
+property-image-storage:
+  root-path: ${PROPERTY_IMAGE_STORAGE_PATH:uploads}
+  public-url-prefix: /uploads
