@@ -34,3 +34,6 @@ app:
     trust-proxy-headers: false
   sms:
     provider: development
+
+property-image-storage:
+  provider: local

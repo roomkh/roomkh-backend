@@ -34,3 +34,7 @@ app:
 
   sms:
     provider: not-configured
+
+# Change to a real provider (e.g. cloudinary) once implemented in a future step.
+property-image-storage:
+  provider: unavailable
