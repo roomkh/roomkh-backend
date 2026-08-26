@@ -1,5 +1,6 @@
 package com.roomkh.backend.service.impl;
 
+import com.roomkh.backend.dto.property.PropertyImageDeleteResponse;
 import com.roomkh.backend.dto.property.PropertyImageUploadResponse;
 import com.roomkh.backend.entity.Property;
 import com.roomkh.backend.entity.PropertyImage;
@@ -17,8 +18,11 @@ import com.roomkh.backend.service.PropertyImageService;
 import com.roomkh.backend.storage.PropertyImageStorage;
 import com.roomkh.backend.storage.StoredPropertyImage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -29,6 +33,7 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PropertyImageServiceImpl implements PropertyImageService {
@@ -43,23 +48,19 @@ public class PropertyImageServiceImpl implements PropertyImageService {
 
     @Override
     @Transactional
-    public PropertyImageUploadResponse uploadImage(Long authenticatedUserId, Long propertyId, MultipartFile image,
-                                                   Boolean isCover, Integer sortOrder) {
-        User seller = userRepository.findById(authenticatedUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
+    public PropertyImageUploadResponse uploadImage(
+            Long authenticatedUserId,
+            Long propertyId,
+            MultipartFile image,
+            Boolean isCover,
+            Integer sortOrder
+    ) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
 
-        if (seller.getRole().getName() != RoleName.SELLER) {
-            throw new BadRequestException("Only SELLER accounts can manage properties.");
-        }
-
-        // Lock the property row first — this serializes concurrent uploads to the same property
-        // so the image count below is always read after any other in-flight upload has finished.
         Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
 
-        if (property.getStatus() != PropertyStatus.DRAFT && property.getStatus() != PropertyStatus.REJECTED) {
-            throw new DuplicateResourceException("Only DRAFT or REJECTED properties can be modified.");
-        }
+        verifyEditableProperty(property);
 
         long existingImageCount = propertyImageRepository.countByProperty_Id(propertyId);
         if (existingImageCount >= MAX_IMAGES_PER_PROPERTY) {
@@ -72,6 +73,7 @@ public class PropertyImageServiceImpl implements PropertyImageService {
             if (sortOrder <= 0) {
                 throw new BadRequestException("sort_order must be greater than 0.");
             }
+
             if (propertyImageRepository.existsByProperty_IdAndSortOrder(propertyId, sortOrder)) {
                 throw new DuplicateResourceException("Sort order is already in use for this property.");
             }
@@ -84,11 +86,8 @@ public class PropertyImageServiceImpl implements PropertyImageService {
         boolean isFirstImage = existingImageCount == 0;
         boolean finalIsCover = isFirstImage || Boolean.TRUE.equals(isCover);
 
-        if (propertyImageStorage.isEmpty()) {
-            throw new ServiceUnavailableException("Property image storage is not configured.");
-        }
-
-        StoredPropertyImage stored = propertyImageStorage.get().store(image);
+        PropertyImageStorage storage = getStorage();
+        StoredPropertyImage stored = storage.store(image);
 
         try {
             if (finalIsCover && !isFirstImage) {
@@ -122,9 +121,94 @@ public class PropertyImageServiceImpl implements PropertyImageService {
                     .createdAt(saved.getCreatedAt())
                     .build();
         } catch (RuntimeException ex) {
-            propertyImageStorage.get().delete(stored.getStorageKey());
+            storage.delete(stored.getStorageKey());
             throw ex;
         }
+    }
+
+    @Override
+    @Transactional
+    public PropertyImageDeleteResponse deleteImage(
+            Long authenticatedUserId,
+            Long propertyId,
+            Long imageId
+    ) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        verifyEditableProperty(property);
+
+        PropertyImage image = propertyImageRepository.findByIdAndProperty_Id(imageId, propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property image not found."));
+
+        boolean wasCover = image.isCover();
+        String storageKey = image.getStorageKey();
+
+        propertyImageRepository.delete(image);
+        propertyImageRepository.flush();
+
+        Long newCoverImageId = null;
+
+        if (wasCover) {
+            Optional<PropertyImage> nextImage = propertyImageRepository
+                    .findFirstByProperty_IdOrderBySortOrderAsc(propertyId);
+
+            if (nextImage.isPresent()) {
+                PropertyImage newCover = nextImage.get();
+                newCover.setCover(true);
+                propertyImageRepository.saveAndFlush(newCover);
+                newCoverImageId = newCover.getId();
+            }
+        }
+
+        registerAfterCommitStorageDeletion(storageKey);
+
+        return PropertyImageDeleteResponse.builder()
+                .id(imageId)
+                .propertyId(propertyId)
+                .wasCover(wasCover)
+                .newCoverImageId(newCoverImageId)
+                .build();
+    }
+
+    private User loadVerifiedSeller(Long authenticatedUserId) {
+        User seller = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found."));
+
+        if (seller.getRole().getName() != RoleName.SELLER) {
+            throw new BadRequestException("Only SELLER accounts can manage properties.");
+        }
+
+        return seller;
+    }
+
+    private void verifyEditableProperty(Property property) {
+        if (property.getStatus() != PropertyStatus.DRAFT && property.getStatus() != PropertyStatus.REJECTED) {
+            throw new DuplicateResourceException("Only DRAFT or REJECTED properties can be modified.");
+        }
+    }
+
+    private PropertyImageStorage getStorage() {
+        return propertyImageStorage.orElseThrow(
+                () -> new ServiceUnavailableException("Property image storage is not configured.")
+        );
+    }
+
+    private void registerAfterCommitStorageDeletion(String storageKey) {
+        PropertyImageStorage storage = getStorage();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    storage.delete(storageKey);
+                } catch (RuntimeException ex) {
+                    log.warn("Property image file cleanup failed after database deletion.");
+                }
+            }
+        });
     }
 
     private void validateImageFile(MultipartFile image) {
@@ -142,27 +226,34 @@ public class PropertyImageServiceImpl implements PropertyImageService {
         }
 
         String detectedFormat;
+
         try (InputStream inputStream = image.getInputStream()) {
-            ImageInputStream iis = ImageIO.createImageInputStream(inputStream);
-            if (iis == null) {
+            ImageInputStream imageInputStream = ImageIO.createImageInputStream(inputStream);
+
+            if (imageInputStream == null) {
                 throw new BadRequestException("Invalid image file.");
             }
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+
             if (!readers.hasNext()) {
                 throw new BadRequestException("Invalid image file.");
             }
+
             ImageReader reader = readers.next();
             detectedFormat = reader.getFormatName();
-            reader.setInput(iis);
+            reader.setInput(imageInputStream);
             reader.read(0);
-        } catch (BadRequestException e) {
-            throw e;
-        } catch (IOException | RuntimeException e) {
+            reader.dispose();
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (IOException | RuntimeException ex) {
             throw new BadRequestException("Invalid image file.");
         }
 
         boolean validFormat = detectedFormat != null
                 && (detectedFormat.equalsIgnoreCase("JPEG") || detectedFormat.equalsIgnoreCase("PNG"));
+
         if (!validFormat) {
             throw new BadRequestException("Invalid image file.");
         }
