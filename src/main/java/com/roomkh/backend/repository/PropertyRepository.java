@@ -32,4 +32,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
     @Query("SELECT COALESCE(SUM(p.inquiryCount), 0) FROM Property p WHERE p.seller.id = :sellerId")
     Long sumInquiryCountBySellerId(@Param("sellerId") Long sellerId);
+
+    // JpaRepository already includes Page<Property> findAll(Pageable pageable);
+
+    Page<Property> findByStatus(PropertyStatus status, Pageable pageable);
 }
