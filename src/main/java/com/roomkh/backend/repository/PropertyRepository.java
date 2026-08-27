@@ -36,4 +36,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     // JpaRepository already includes Page<Property> findAll(Pageable pageable);
 
     Page<Property> findByStatus(PropertyStatus status, Pageable pageable);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Property p WHERE p.id = :id")
+    Optional<Property> findByIdForUpdate(@Param("id") Long id);
 }

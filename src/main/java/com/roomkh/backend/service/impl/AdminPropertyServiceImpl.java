@@ -1,13 +1,16 @@
 package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.dto.property.AdminPropertyListItemResponse;
+import com.roomkh.backend.dto.property.AdminPropertyReviewRequest;
 import com.roomkh.backend.entity.Property;
 import com.roomkh.backend.entity.PropertyImage;
 import com.roomkh.backend.entity.PropertyStatus;
 import com.roomkh.backend.entity.User;
 import com.roomkh.backend.exception.BadRequestException;
+import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyImageRepository;
 import com.roomkh.backend.repository.PropertyRepository;
+import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.AdminPropertyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +32,50 @@ public class AdminPropertyServiceImpl implements AdminPropertyService {
 
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
+
+    private final UserRepository userRepository; // Ensure this is injected
+
+    @Override
+    @Transactional
+    public void reviewProperty(Long adminId, Long propertyId, AdminPropertyReviewRequest request) {
+        // 1. Fetch admin user for auditing
+        User adminUser = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found."));
+
+        // 2. Fetch and lock target property row
+        Property property = propertyRepository.findByIdForUpdate(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        // 3. Validate state machine rule (Must be PENDING)
+        if (property.getStatus() != PropertyStatus.PENDING) {
+            throw new BadRequestException("Only PENDING properties can be reviewed.");
+        }
+
+        // 4. Validate requested status
+        String requestedStatus = request.getStatus().trim().toUpperCase();
+        if (!requestedStatus.equals(PropertyStatus.ACTIVE.name()) && !requestedStatus.equals(PropertyStatus.REJECTED.name())) {
+            throw new BadRequestException("Invalid review status. Must be ACTIVE or REJECTED.");
+        }
+
+        // 5. Apply transitions and rejection reason validation
+        if (requestedStatus.equals(PropertyStatus.REJECTED.name())) {
+            if (request.getRejectionReason() == null || request.getRejectionReason().isBlank()) {
+                throw new BadRequestException("A rejection reason is strictly required when rejecting a property.");
+            }
+            property.setStatus(PropertyStatus.REJECTED);
+            property.setRejectionReason(request.getRejectionReason().trim());
+        } else {
+            property.setStatus(PropertyStatus.ACTIVE);
+            property.setRejectionReason(null); // Clear any previous rejection reason
+        }
+
+        // 6. Update audit fields
+        property.setReviewedBy(adminUser);
+        property.setReviewedAt(java.time.OffsetDateTime.now());
+
+        // 7. Save entity
+        propertyRepository.save(property);
+    }
 
     @Override
     @Transactional(readOnly = true)

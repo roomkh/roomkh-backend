@@ -5,4 +5,6 @@ import org.springframework.data.domain.Page;
 
 public interface AdminPropertyService {
     Page<AdminPropertyListItemResponse> listProperties(String status, int page, int size, String sortBy);
+
+    void reviewProperty(Long adminId, Long propertyId, com.roomkh.backend.dto.property.AdminPropertyReviewRequest request);
 }
