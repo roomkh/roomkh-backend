@@ -83,6 +83,40 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
 
     @Override
     @Transactional
+    public SellerPropertyResponse updatePropertyStatus(Long authenticatedUserId, Long propertyId, UpdatePropertyStatusRequest request) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        // 1. Lock target property row
+        Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        // 2. Validate requested status
+        String requestedStatus = request.getStatus().trim().toUpperCase();
+        if (!requestedStatus.equals(PropertyStatus.SOLD_RENTED.name())) {
+            throw new BadRequestException("Invalid status update. Only 'SOLD_RENTED' is allowed through this action.");
+        }
+
+        // 3. Validate current property status and state machine rules
+        PropertyStatus currentStatus = property.getStatus();
+
+        if (currentStatus == PropertyStatus.SOLD_RENTED) {
+            throw new BadRequestException("Property is already marked as sold or rented.");
+        }
+
+        if (currentStatus != PropertyStatus.ACTIVE) {
+            throw new BadRequestException("Only ACTIVE properties can be marked as SOLD_RENTED.");
+        }
+
+        // 4. Update status
+        property.setStatus(PropertyStatus.SOLD_RENTED);
+
+        // 5. Save and map response
+        Property saved = propertyRepository.save(property);
+        return propertyMapper.toSellerPropertyResponse(saved);
+    }
+
+    @Override
+    @Transactional
     public SellerPropertyResponse createDraft(Long authenticatedUserId, CreatePropertyRequest request) {
         User seller = loadVerifiedSeller(authenticatedUserId);
 
