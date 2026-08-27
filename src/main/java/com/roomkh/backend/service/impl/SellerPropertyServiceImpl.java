@@ -1,16 +1,13 @@
 package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.dto.property.*;
-import com.roomkh.backend.entity.Amenity;
-import com.roomkh.backend.entity.Property;
-import com.roomkh.backend.entity.PropertyStatus;
-import com.roomkh.backend.entity.RoleName;
-import com.roomkh.backend.entity.User;
+import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.DuplicateResourceException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.PropertyMapper;
 import com.roomkh.backend.repository.AmenityRepository;
+import com.roomkh.backend.repository.PropertyImageRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.SellerPropertyListResult;
@@ -26,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,6 +38,7 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     private final AmenityRepository amenityRepository;
     private final PropertyMapper propertyMapper;
     private final SlugGenerator slugGenerator;
+    private final PropertyImageRepository propertyImageRepository;
 
     @Override
     @Transactional
@@ -88,13 +87,19 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     }
 
     @Override
-    public SellerPropertyListResult listProperties(Long authenticatedUserId, PropertyStatus status,
-                                                   int page, int size, String sortBy) {
+    public SellerPropertyListResult listProperties(
+            Long authenticatedUserId,
+            PropertyStatus status,
+            int page,
+            int size,
+            String sortBy
+    ) {
         User seller = loadVerifiedSeller(authenticatedUserId);
 
         if (page < 1) {
             throw new BadRequestException("page must be at least 1.");
         }
+
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new BadRequestException("size must be between 1 and 50.");
         }
@@ -106,7 +111,25 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
                 ? propertyRepository.findBySeller_IdAndStatus(seller.getId(), status, pageable)
                 : propertyRepository.findBySeller_Id(seller.getId(), pageable);
 
-        Page<SellerPropertyListItemResponse> mappedPage = propertyPage.map(propertyMapper::toSellerPropertyListItemResponse);
+        List<Long> propertyIds = propertyPage.getContent().stream()
+                .map(Property::getId)
+                .toList();
+
+        Map<Long, String> coverImageUrlsByPropertyId = propertyIds.isEmpty()
+                ? Map.of()
+                : propertyImageRepository.findByProperty_IdInAndCoverTrue(propertyIds).stream()
+                .collect(Collectors.toMap(
+                        propertyImage -> propertyImage.getProperty().getId(),
+                        PropertyImage::getUrl
+                ));
+
+        Page<SellerPropertyListItemResponse> mappedPage = propertyPage.map(property ->
+                propertyMapper.toSellerPropertyListItemResponse(
+                        property,
+                        coverImageUrlsByPropertyId.get(property.getId())
+                )
+        );
+
         SellerPropertyStatusCountsResponse statusCounts = buildStatusCounts(seller.getId());
 
         return new SellerPropertyListResult(mappedPage, statusCounts);
