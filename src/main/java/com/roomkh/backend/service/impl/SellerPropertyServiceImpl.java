@@ -13,6 +13,7 @@ import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.SellerPropertyListResult;
 import com.roomkh.backend.service.SellerPropertyService;
 import com.roomkh.backend.service.SlugGenerator;
+import com.roomkh.backend.storage.PropertyImageStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     private final PropertyMapper propertyMapper;
     private final SlugGenerator slugGenerator;
     private final PropertyImageRepository propertyImageRepository;
+    private final PropertyImageStorage propertyImageStorage;
 
     @Override
     @Transactional
@@ -258,6 +260,37 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
 
         Property saved = propertyRepository.save(property);
         return propertyMapper.toSellerPropertyResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProperty(Long authenticatedUserId, Long propertyId) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        // 1. Lock target property row
+        Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        // 2. Validate current property status for deletion
+        PropertyStatus currentStatus = property.getStatus();
+        if (currentStatus != PropertyStatus.DRAFT && currentStatus != PropertyStatus.REJECTED) {
+            throw new BadRequestException("Only DRAFT or REJECTED properties can be deleted.");
+        }
+
+        // 3. Fetch associated images and delete physical files
+        List<PropertyImage> images = propertyImageRepository.findByProperty_Id(propertyId);
+        if (images != null && !images.isEmpty()) {
+            for (PropertyImage image : images) {
+                // Delete the physical file from local/cloud storage
+                propertyImageStorage.delete(image.getUrl());
+            }
+            // Explicitly delete image records to prevent foreign key constraint issues
+            // if cascade deletion isn't configured on the entity side
+            propertyImageRepository.deleteAll(images);
+        }
+
+        // 4. Delete the Property record (Property amenities mapping will cascade automatically)
+        propertyRepository.delete(property);
     }
 
     private void validateRequestedStatus(String requestedStatus, PropertyStatus currentStatus) {

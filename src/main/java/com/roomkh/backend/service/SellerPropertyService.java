@@ -17,4 +17,6 @@ public interface SellerPropertyService {
     SellerPropertyResponse submitPropertyForReview(Long authenticatedUserId, Long propertyId);
 
     SellerPropertyResponse updatePropertyStatus(Long authenticatedUserId, Long propertyId, UpdatePropertyStatusRequest request);
+
+    void deleteProperty(Long authenticatedUserId, Long propertyId);
 }
