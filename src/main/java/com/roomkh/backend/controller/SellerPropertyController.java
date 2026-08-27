@@ -2,10 +2,7 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.dto.comon.PageMeta;
-import com.roomkh.backend.dto.property.CreatePropertyRequest;
-import com.roomkh.backend.dto.property.SellerPropertyListItemResponse;
-import com.roomkh.backend.dto.property.SellerPropertyResponse;
-import com.roomkh.backend.dto.property.UpdatePropertyRequest;
+import com.roomkh.backend.dto.property.*;
 import com.roomkh.backend.entity.PropertyStatus;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.security.CustomUserDetails;
@@ -33,6 +30,30 @@ public class SellerPropertyController {
 
     private final SellerPropertyService sellerPropertyService;
 
+
+    @PatchMapping("/{propertyId}/status")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Update property status",
+            description = "Allows an authenticated SELLER to mark an ACTIVE property as SOLD_RENTED. " +
+                    "Returns 409 or 400 if the property is not ACTIVE. Returns 404 if the property is not owned by the seller."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property status updated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status transition (e.g., property is DRAFT) or invalid status payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or not owned by seller")
+    })
+    public ResponseEntity<ApiResponse<SellerPropertyResponse>> updatePropertyStatus(
+            @PathVariable Long propertyId,
+            @Valid @RequestBody UpdatePropertyStatusRequest request) {
+
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        SellerPropertyResponse response = sellerPropertyService.updatePropertyStatus(authenticatedUserId, propertyId, request);
+
+        return ResponseEntity.ok(ApiResponse.success("Property status updated successfully.", response));
+    }
 
     @PostMapping("/{propertyId}/submit")
     @SecurityRequirement(name = "bearerAuth")
