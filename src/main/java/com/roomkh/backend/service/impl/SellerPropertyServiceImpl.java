@@ -293,6 +293,25 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
         propertyRepository.delete(property);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SellerPropertyDetailResponse getPropertyDetail(Long authenticatedUserId, Long propertyId) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        // 1. Fetch property and verify ownership
+        Property property = propertyRepository.findByIdAndSellerId(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        // 2. Fetch images and sort them by sort_order
+        List<PropertyImage> images = propertyImageRepository.findByProperty_Id(propertyId);
+        if (images != null) {
+            images.sort(java.util.Comparator.comparingInt(PropertyImage::getSortOrder));
+        }
+
+        // 3. Map to detail DTO
+        return propertyMapper.toSellerPropertyDetailResponse(property, images);
+    }
+
     private void validateRequestedStatus(String requestedStatus, PropertyStatus currentStatus) {
         if (requestedStatus == null || requestedStatus.isBlank()) {
             return;

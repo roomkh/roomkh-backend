@@ -31,6 +31,24 @@ public class SellerPropertyController {
     private final SellerPropertyService sellerPropertyService;
 
 
+    @GetMapping("/{propertyId}")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Get seller property details",
+            description = "Fetches the full details of a property owned by the authenticated SELLER, including amenities and sorted images. Used to populate the edit form."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property details retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or not owned by seller")
+    })
+    public ResponseEntity<ApiResponse<SellerPropertyDetailResponse>> getPropertyDetail(@PathVariable Long propertyId) {
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        SellerPropertyDetailResponse response = sellerPropertyService.getPropertyDetail(authenticatedUserId, propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property details retrieved successfully.", response));
+    }
+
     @PatchMapping("/{propertyId}/status")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
