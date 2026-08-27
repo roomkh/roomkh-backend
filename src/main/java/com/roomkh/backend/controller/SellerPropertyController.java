@@ -156,6 +156,25 @@ public class SellerPropertyController {
         return ResponseEntity.ok(ApiResponse.success("Property updated successfully.", response));
     }
 
+    @DeleteMapping("/{propertyId}")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Delete property",
+            description = "Permanently deletes a property owned by the authenticated SELLER. Only DRAFT or REJECTED properties can be deleted."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property deleted successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status for deletion (e.g., ACTIVE or PENDING)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or not owned by seller")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteProperty(@PathVariable Long propertyId) {
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        sellerPropertyService.deleteProperty(authenticatedUserId, propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property deleted successfully.", null));
+    }
+
     private PropertyStatus parseStatus(String rawStatus) {
         if (rawStatus == null || rawStatus.isBlank()) {
             return null;
