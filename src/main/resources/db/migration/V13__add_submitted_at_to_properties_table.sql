@@ -1,0 +1,2 @@
+ALTER TABLE properties
+    ADD COLUMN submitted_at TIMESTAMP WITH TIME ZONE;

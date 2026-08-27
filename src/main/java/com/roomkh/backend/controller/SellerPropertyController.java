@@ -33,6 +33,27 @@ public class SellerPropertyController {
 
     private final SellerPropertyService sellerPropertyService;
 
+
+    @PostMapping("/{propertyId}/submit")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Submit property for review",
+            description = "Submits a DRAFT or REJECTED property for Admin review. Updates status to PENDING. " +
+                    "Property must have at least one image and one cover image."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property submitted successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Missing images, cover image, or invalid status transition"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Authenticated user is not a SELLER"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or not owned by seller")
+    })
+    public ResponseEntity<ApiResponse<SellerPropertyResponse>> submitProperty(@PathVariable Long propertyId) {
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        SellerPropertyResponse response = sellerPropertyService.submitPropertyForReview(authenticatedUserId, propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property submitted for review successfully.", response));
+    }
+
     @PostMapping
     @SecurityRequirement(name = "bearerAuth")
     @Operation(

@@ -21,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,46 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
     private final PropertyMapper propertyMapper;
     private final SlugGenerator slugGenerator;
     private final PropertyImageRepository propertyImageRepository;
+
+    @Override
+    @Transactional
+    public SellerPropertyResponse submitPropertyForReview(Long authenticatedUserId, Long propertyId) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        // 1. Lock property for update to prevent concurrent submissions
+        Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        // 2. Validate current status
+        PropertyStatus currentStatus = property.getStatus();
+        if (currentStatus == PropertyStatus.PENDING) {
+            throw new BadRequestException("Property is already pending review.");
+        }
+        if (currentStatus == PropertyStatus.ACTIVE) {
+            throw new BadRequestException("Active property cannot be submitted for review.");
+        }
+        if (currentStatus == PropertyStatus.SOLD_RENTED) {
+            throw new BadRequestException("Sold or rented property cannot be submitted for review.");
+        }
+
+        // 3. Validate image constraints
+        List<PropertyImage> images = propertyImageRepository.findByProperty_Id(propertyId);
+        if (images == null || images.isEmpty()) {
+            throw new BadRequestException("Property must have at least one image before submission.");
+        }
+
+        boolean hasCoverImage = images.stream().anyMatch(PropertyImage::isCover);
+        if (!hasCoverImage) {
+            throw new BadRequestException("Property must have a cover image assigned before submission.");
+        }
+
+        // 4. Update status and timestamp
+        property.setStatus(PropertyStatus.PENDING);
+        property.setSubmittedAt(OffsetDateTime.now());
+
+        Property saved = propertyRepository.save(property);
+        return propertyMapper.toSellerPropertyResponse(saved);
+    }
 
     @Override
     @Transactional

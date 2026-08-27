@@ -118,6 +118,9 @@ public class Property {
     @Column(name = "listed_at")
     private OffsetDateTime listedAt;
 
+    @Column(name = "submitted_at")
+    private OffsetDateTime submittedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
