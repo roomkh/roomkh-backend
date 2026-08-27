@@ -12,4 +12,6 @@ public interface SellerPropertyService {
                                             int page, int size, String sortBy);
 
     SellerPropertyResponse updateProperty(Long authenticatedUserId, Long propertyId, UpdatePropertyRequest request);
+
+    SellerPropertyResponse submitPropertyForReview(Long authenticatedUserId, Long propertyId);
 }
