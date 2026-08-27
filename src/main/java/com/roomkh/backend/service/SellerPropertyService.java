@@ -1,9 +1,6 @@
 package com.roomkh.backend.service;
 
-import com.roomkh.backend.dto.property.CreatePropertyRequest;
-import com.roomkh.backend.dto.property.SellerPropertyResponse;
-import com.roomkh.backend.dto.property.UpdatePropertyRequest;
-import com.roomkh.backend.dto.property.UpdatePropertyStatusRequest;
+import com.roomkh.backend.dto.property.*;
 import com.roomkh.backend.entity.PropertyStatus;
 
 public interface SellerPropertyService {
@@ -19,4 +16,6 @@ public interface SellerPropertyService {
     SellerPropertyResponse updatePropertyStatus(Long authenticatedUserId, Long propertyId, UpdatePropertyStatusRequest request);
 
     void deleteProperty(Long authenticatedUserId, Long propertyId);
+
+    SellerPropertyDetailResponse getPropertyDetail(Long authenticatedUserId, Long propertyId);
 }
