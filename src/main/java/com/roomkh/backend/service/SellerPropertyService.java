@@ -18,4 +18,6 @@ public interface SellerPropertyService {
     void deleteProperty(Long authenticatedUserId, Long propertyId);
 
     SellerPropertyDetailResponse getPropertyDetail(Long authenticatedUserId, Long propertyId);
+
+    SellerDashboardResponse getDashboardSummary(Long authenticatedUserId);
 }

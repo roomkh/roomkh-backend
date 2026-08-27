@@ -312,6 +312,32 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
         return propertyMapper.toSellerPropertyDetailResponse(property, images);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SellerDashboardResponse getDashboardSummary(Long authenticatedUserId) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        long totalProperties = propertyRepository.countBySeller_Id(seller.getId());
+        long activeCount = propertyRepository.countBySeller_IdAndStatus(seller.getId(), PropertyStatus.ACTIVE);
+        long pendingCount = propertyRepository.countBySeller_IdAndStatus(seller.getId(), PropertyStatus.PENDING);
+        long draftCount = propertyRepository.countBySeller_IdAndStatus(seller.getId(), PropertyStatus.DRAFT);
+        long soldRentedCount = propertyRepository.countBySeller_IdAndStatus(seller.getId(), PropertyStatus.SOLD_RENTED);
+
+        long totalViews = propertyRepository.sumViewCountBySellerId(seller.getId());
+        long totalInquiries = propertyRepository.sumInquiryCountBySellerId(seller.getId());
+
+        return SellerDashboardResponse.builder()
+                .sellerStatus(seller.getSellerStatus())
+                .totalProperties(totalProperties)
+                .activeCount(activeCount)
+                .pendingCount(pendingCount)
+                .draftCount(draftCount)
+                .soldRentedCount(soldRentedCount)
+                .totalViews(totalViews)
+                .totalInquiries(totalInquiries)
+                .build();
+    }
+
     private void validateRequestedStatus(String requestedStatus, PropertyStatus currentStatus) {
         if (requestedStatus == null || requestedStatus.isBlank()) {
             return;

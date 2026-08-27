@@ -26,4 +26,10 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Property p WHERE p.id = :propertyId AND p.seller.id = :sellerId")
     Optional<Property> findByIdAndSellerIdForUpdate(@Param("propertyId") Long propertyId, @Param("sellerId") Long sellerId);
+
+    @Query("SELECT COALESCE(SUM(p.viewCount), 0) FROM Property p WHERE p.seller.id = :sellerId")
+    Long sumViewCountBySellerId(@Param("sellerId") Long sellerId);
+
+    @Query("SELECT COALESCE(SUM(p.inquiryCount), 0) FROM Property p WHERE p.seller.id = :sellerId")
+    Long sumInquiryCountBySellerId(@Param("sellerId") Long sellerId);
 }
