@@ -48,7 +48,10 @@ public class PropertyMapper {
                 .build();
     }
 
-    public SellerPropertyListItemResponse toSellerPropertyListItemResponse(Property property) {
+    public SellerPropertyListItemResponse toSellerPropertyListItemResponse(
+            Property property,
+            String coverImageUrl
+    ) {
         return SellerPropertyListItemResponse.builder()
                 .id(property.getId())
                 .title(property.getTitle())
@@ -65,7 +68,7 @@ public class PropertyMapper {
                 .bedrooms(property.getBedrooms())
                 .bathrooms(property.getBathrooms())
                 .sizeSqm(property.getSizeSqm())
-                .coverImageUrl(null)
+                .coverImageUrl(coverImageUrl)
                 .viewCount(property.getViewCount())
                 .inquiryCount(property.getInquiryCount())
                 .createdAt(property.getCreatedAt())

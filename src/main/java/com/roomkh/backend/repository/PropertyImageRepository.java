@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface PropertyImageRepository extends JpaRepository<PropertyImage, Long> {
@@ -20,6 +22,12 @@ public interface PropertyImageRepository extends JpaRepository<PropertyImage, Lo
     Optional<PropertyImage> findByIdAndProperty_Id(Long imageId, Long propertyId);
 
     Optional<PropertyImage> findFirstByProperty_IdOrderBySortOrderAsc(Long propertyId);
+
+    List<PropertyImage> findByProperty_IdOrderBySortOrderAsc(Long propertyId);
+
+    List<PropertyImage> findByProperty_Id(Long propertyId);
+
+    List<PropertyImage> findByProperty_IdInAndCoverTrue(Collection<Long> propertyIds);
 
     @Query("SELECT MAX(pi.sortOrder) FROM PropertyImage pi WHERE pi.property.id = :propertyId")
     Optional<Integer> findMaxSortOrderByPropertyId(@Param("propertyId") Long propertyId);

@@ -2,25 +2,25 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.dto.property.PropertyImageDeleteResponse;
+import com.roomkh.backend.dto.property.PropertyImageOrderResponse;
 import com.roomkh.backend.dto.property.PropertyImageUploadResponse;
+import com.roomkh.backend.dto.property.ReorderPropertyImagesRequest;
 import com.roomkh.backend.security.CustomUserDetails;
 import com.roomkh.backend.service.PropertyImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/seller/properties/{propertyId}/images")
@@ -29,6 +29,57 @@ import org.springframework.web.multipart.MultipartFile;
 public class PropertyImageController {
 
     private final PropertyImageService propertyImageService;
+
+    @PatchMapping("/order")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Reorder property images",
+            description = "Reorders all images for the authenticated SELLER's own DRAFT or REJECTED property. " +
+                    "The request must include every property image exactly once. The first submitted image " +
+                    "becomes the cover image and receives sort order 1."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Property images reordered successfully"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid image list, duplicate image IDs, or partial reorder request"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Missing or invalid JWT"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "Authenticated user is not a SELLER"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "Property not found or not owned by seller"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "Property status is not editable"
+            )
+    })
+    public ResponseEntity<ApiResponse<List<PropertyImageOrderResponse>>> reorderImages(
+            @PathVariable Long propertyId,
+            @Valid @RequestBody ReorderPropertyImagesRequest request
+    ) {
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+
+        List<PropertyImageOrderResponse> response = propertyImageService.reorderImages(
+                authenticatedUserId,
+                propertyId,
+                request
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Property images reordered successfully.", response)
+        );
+    }
 
     @PostMapping(consumes = "multipart/form-data")
     @SecurityRequirement(name = "bearerAuth")

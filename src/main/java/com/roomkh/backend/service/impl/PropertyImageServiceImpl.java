@@ -1,7 +1,9 @@
 package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.dto.property.PropertyImageDeleteResponse;
+import com.roomkh.backend.dto.property.PropertyImageOrderResponse;
 import com.roomkh.backend.dto.property.PropertyImageUploadResponse;
+import com.roomkh.backend.dto.property.ReorderPropertyImagesRequest;
 import com.roomkh.backend.entity.Property;
 import com.roomkh.backend.entity.PropertyImage;
 import com.roomkh.backend.entity.PropertyStatus;
@@ -30,8 +32,8 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Iterator;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -45,6 +47,75 @@ public class PropertyImageServiceImpl implements PropertyImageService {
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final Optional<PropertyImageStorage> propertyImageStorage;
+
+    @Override
+    @Transactional
+    public List<PropertyImageOrderResponse> reorderImages(
+            Long authenticatedUserId,
+            Long propertyId,
+            ReorderPropertyImagesRequest request
+    ) {
+        User seller = loadVerifiedSeller(authenticatedUserId);
+
+        Property property = propertyRepository.findByIdAndSellerIdForUpdate(propertyId, seller.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found."));
+
+        verifyEditableProperty(property);
+
+        List<PropertyImage> existingImages = propertyImageRepository
+                .findByProperty_IdOrderBySortOrderAsc(propertyId);
+
+        List<Long> submittedImageIds = request.getImageIds();
+
+        validateCompleteImageOrder(existingImages, submittedImageIds);
+
+        Map<Long, PropertyImage> imagesById = existingImages.stream()
+                .collect(Collectors.toMap(PropertyImage::getId, image -> image));
+
+        /*
+         * Phase 1:
+         * Use unique temporary high positive sort-order values. Negative values are
+         * not allowed because PostgreSQL enforces chk_property_images_sort_order_positive.
+         *
+         * The final valid sort orders are only 1 through the number of property images
+         * (maximum 10), so values starting from 1000 cannot collide with final values.
+         */
+        final int temporarySortOrderBase = 1000;
+
+        for (int index = 0; index < existingImages.size(); index++) {
+            PropertyImage image = existingImages.get(index);
+
+            image.setSortOrder(temporarySortOrderBase + index + 1);
+            image.setCover(false);
+        }
+
+        propertyImageRepository.saveAll(existingImages);
+        propertyImageRepository.flush();
+
+        /*
+         * Phase 2:
+         * Apply the requested order. Position 0 becomes sort order 1 and the
+         * only cover image. All other images become non-cover images.
+         */
+        List<PropertyImage> orderedImages = new java.util.ArrayList<>();
+
+        for (int index = 0; index < submittedImageIds.size(); index++) {
+            Long imageId = submittedImageIds.get(index);
+            PropertyImage image = imagesById.get(imageId);
+
+            image.setSortOrder(index + 1);
+            image.setCover(index == 0);
+
+            orderedImages.add(image);
+        }
+
+        propertyImageRepository.saveAll(orderedImages);
+        propertyImageRepository.flush();
+
+        return orderedImages.stream()
+                .map(this::toPropertyImageOrderResponse)
+                .toList();
+    }
 
     @Override
     @Transactional
@@ -257,5 +328,42 @@ public class PropertyImageServiceImpl implements PropertyImageService {
         if (!validFormat) {
             throw new BadRequestException("Invalid image file.");
         }
+    }
+
+    private void validateCompleteImageOrder(
+            List<PropertyImage> existingImages,
+            List<Long> submittedImageIds
+    ) {
+        if (submittedImageIds.size() != existingImages.size()) {
+            throw new BadRequestException("Image order must include all property images exactly once.");
+        }
+
+        Set<Long> submittedUniqueIds = new HashSet<>(submittedImageIds);
+
+        if (submittedUniqueIds.size() != submittedImageIds.size()) {
+            throw new BadRequestException("Image order must include all property images exactly once.");
+        }
+
+        Set<Long> existingImageIds = existingImages.stream()
+                .map(PropertyImage::getId)
+                .collect(Collectors.toSet());
+
+        if (!existingImageIds.containsAll(submittedUniqueIds)) {
+            throw new BadRequestException("One or more images do not belong to this property.");
+        }
+
+        if (!submittedUniqueIds.equals(existingImageIds)) {
+            throw new BadRequestException("Image order must include all property images exactly once.");
+        }
+    }
+
+    private PropertyImageOrderResponse toPropertyImageOrderResponse(PropertyImage image) {
+        return PropertyImageOrderResponse.builder()
+                .id(image.getId())
+                .propertyId(image.getProperty().getId())
+                .url(image.getUrl())
+                .isCover(image.isCover())
+                .sortOrder(image.getSortOrder())
+                .build();
     }
 }
