@@ -161,6 +161,16 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
                 .build());
     }
 
+    @Override
+    @Transactional
+    public void recordContactClick(Long propertyId) {
+        Property property = propertyRepository.findByIdAndStatus(propertyId, com.roomkh.backend.entity.PropertyStatus.ACTIVE)
+                .orElseThrow(() -> new com.roomkh.backend.exception.ResourceNotFoundException("Property not found or unavailable."));
+
+        property.setInquiryCount((property.getInquiryCount() == null ? 0 : property.getInquiryCount()) + 1);
+        // Hibernate's dirty checking will automatically flush this update to the database upon transaction commit.
+    }
+
     private Sort resolveSort(String sortBy) {
         if ("price_asc".equalsIgnoreCase(sortBy)) {
             return Sort.by(Sort.Direction.ASC, "price");

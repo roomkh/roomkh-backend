@@ -12,4 +12,6 @@ public interface PublicPropertyService {
             BigDecimal minPrice, BigDecimal maxPrice, String province, String sortBy);
 
     PublicPropertyDetailResponse getPropertyDetail(Long propertyId);
+
+    void recordContactClick(Long propertyId);
 }

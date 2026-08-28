@@ -67,4 +67,21 @@ public class PublicPropertyController {
                 resultPage.getContent(), 
                 meta));
     }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{propertyId}/contact-clicks")
+    @Operation(
+            summary = "Record property contact click",
+            description = "Records a user click on contact buttons (e.g., Telegram, Call, WhatsApp) on the property detail page, incrementing the property's inquiry_count for seller analytics."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Contact click recorded successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or unavailable")
+    })
+    public ResponseEntity<ApiResponse<Void>> recordContactClick(
+            @io.swagger.v3.oas.annotations.Parameter(description = "Property ID")
+            @org.springframework.web.bind.annotation.PathVariable Long propertyId) {
+
+        publicPropertyService.recordContactClick(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Contact click recorded successfully.", null));
+    }
 }
