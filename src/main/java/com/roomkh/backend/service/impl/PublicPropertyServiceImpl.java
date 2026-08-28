@@ -275,6 +275,14 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAvailableLocations() {
+        return propertyRepository.findDistinctProvincesWithActiveProperties().stream()
+                .filter(province -> !province.trim().isEmpty())
+                .toList();
+    }
+
     private Sort resolveSort(String sortBy) {
         if ("price_asc".equalsIgnoreCase(sortBy)) {
             return Sort.by(Sort.Direction.ASC, "price");
