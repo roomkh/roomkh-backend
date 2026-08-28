@@ -1,9 +1,12 @@
 package com.roomkh.backend.service.impl;
 
+import com.roomkh.backend.dto.property.PropertyImageResponse;
+import com.roomkh.backend.dto.property.PublicPropertyDetailResponse;
 import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
-import com.roomkh.backend.entity.Property;
-import com.roomkh.backend.entity.PropertyImage;
+import com.roomkh.backend.dto.property.SellerContactResponse;
+import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
+import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyImageRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.PropertySpecification;
@@ -31,6 +34,76 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
+
+    @Override
+    @Transactional
+    public PublicPropertyDetailResponse getPropertyDetail(Long propertyId) {
+        // 1. Fetch property and enforce ACTIVE visibility rule
+        Property property = propertyRepository.findByIdAndStatus(propertyId, PropertyStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found or unavailable."));
+
+        // 2. Increment view count
+        property.setViewCount((property.getViewCount() == null ? 0 : property.getViewCount()) + 1);
+
+        // 3. Fetch related images and sort by sortOrder
+        List<PropertyImage> images = propertyImageRepository.findByProperty_Id(propertyId);
+        if (images != null) {
+            images.sort(java.util.Comparator.comparingInt(PropertyImage::getSortOrder));
+        }
+
+        // 4. Map Images
+        List<PropertyImageResponse> imageResponses = images == null ? List.of() : images.stream()
+                .map(img -> PropertyImageResponse.builder()
+                        .id(img.getId())
+                        .url(img.getUrl())
+                        .isCover(img.isCover())
+                        .sortOrder(img.getSortOrder())
+                        .build())
+                .toList();
+
+        // 5. Map Amenities
+        List<String> amenityCodes = property.getAmenities() == null ? List.of() : property.getAmenities().stream()
+                .map(Amenity::getCode)
+                .toList();
+
+        // 6. Map Seller Contact
+        User seller = property.getSeller();
+        SellerContactResponse sellerContact = seller != null ? SellerContactResponse.builder()
+                .id(seller.getId())
+                .name(seller.getFullName())
+                .phoneNumber(seller.getPhoneNumber())
+                .email(seller.getEmail())
+                .build() : null;
+
+        // 7. Assemble DTO
+        return PublicPropertyDetailResponse.builder()
+                .id(property.getId())
+                .title(property.getTitle())
+                .purpose(property.getPurpose())
+                .propertyType(property.getPropertyType())
+                .price(property.getPrice())
+                .currency(property.getCurrency())
+                .priceUnit(property.getPriceUnit())
+                .description(property.getDescription())
+                .bedrooms(property.getBedrooms())
+                .bathrooms(property.getBathrooms())
+                .sizeSqm(property.getSizeSqm())
+                .floor(property.getFloor())
+                .furnished(property.isFurnished())
+                .ageYears(property.getAgeYears())
+                .province(property.getProvince())
+                .district(property.getDistrict())
+                .commune(property.getCommune())
+                .address(property.getAddress())
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
+                .viewCount(property.getViewCount())
+                .publishedAt(resolvePublishedAt(property))
+                .amenityCodes(amenityCodes)
+                .images(imageResponses)
+                .seller(sellerContact)
+                .build();
+    }
 
     @Override
     @Transactional(readOnly = true)

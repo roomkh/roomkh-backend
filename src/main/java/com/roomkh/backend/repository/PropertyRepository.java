@@ -41,4 +41,6 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Property p WHERE p.id = :id")
     Optional<Property> findByIdForUpdate(@Param("id") Long id);
+
+    Optional<Property> findByIdAndStatus(Long id, PropertyStatus status);
 }
