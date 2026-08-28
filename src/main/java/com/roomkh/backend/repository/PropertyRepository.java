@@ -57,4 +57,7 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     List<Object[]> findPopularLocations(Pageable pageable);
 
     List<Property> findByStatusOrderByCreatedAtDesc(PropertyStatus status, Pageable pageable);
+
+    @Query("SELECT DISTINCT p.province FROM Property p WHERE p.status = 'ACTIVE' AND p.province IS NOT NULL")
+    List<String> findDistinctProvincesWithActiveProperties();
 }

@@ -26,6 +26,19 @@ public class PublicPropertyController {
 
     private final PublicPropertyService publicPropertyService;
 
+    @GetMapping("/locations")
+    @Operation(
+            summary = "Get available locations",
+            description = "Retrieves a distinct list of provinces that currently have active properties. Useful for populating search dropdowns."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Locations retrieved successfully")
+    })
+    public ResponseEntity<ApiResponse<List<String>>> getAvailableLocations() {
+        List<String> locations = publicPropertyService.getAvailableLocations();
+        return ResponseEntity.ok(ApiResponse.success("Locations retrieved successfully.", locations));
+    }
+
     @GetMapping("/home")
     @Operation(
             summary = "Get home page data",

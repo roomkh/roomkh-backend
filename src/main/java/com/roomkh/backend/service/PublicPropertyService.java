@@ -20,4 +20,6 @@ public interface PublicPropertyService {
     List<PublicPropertyListItemResponse> getSimilarProperties(Long propertyId);
 
     HomeDataResponse getHomeData();
+
+    List<String> getAvailableLocations();
 }
