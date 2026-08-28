@@ -1,9 +1,6 @@
 package com.roomkh.backend.service.impl;
 
-import com.roomkh.backend.dto.property.PropertyImageResponse;
-import com.roomkh.backend.dto.property.PublicPropertyDetailResponse;
-import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
-import com.roomkh.backend.dto.property.SellerContactResponse;
+import com.roomkh.backend.dto.property.*;
 import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
@@ -220,6 +217,62 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
         property.setInquiryCount((property.getInquiryCount() == null ? 0 : property.getInquiryCount()) + 1);
         // Hibernate's dirty checking will automatically flush this update to the database upon transaction commit.
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HomeDataResponse getHomeData() {
+        // 1. Fetch Featured Properties (Limit 8, ordered by newest)
+        Pageable featuredLimit = PageRequest.of(0, 8);
+        List<Property> featuredEntities = propertyRepository.findByStatusOrderByCreatedAtDesc(
+                PropertyStatus.ACTIVE, featuredLimit);
+
+        // Fetch cover images in bulk to prevent N+1
+        List<Long> propertyIds = featuredEntities.stream().map(Property::getId).toList();
+        Map<Long, String> coverImageUrls = propertyIds.isEmpty() ? Map.of() :
+                propertyImageRepository.findByProperty_IdInAndCoverTrue(propertyIds).stream()
+                        .collect(Collectors.toMap(
+                                img -> img.getProperty().getId(),
+                                PropertyImage::getUrl
+                        ));
+
+        // Map featured properties
+        List<PublicPropertyListItemResponse> featuredProperties = featuredEntities.stream()
+                .map(property -> PublicPropertyListItemResponse.builder()
+                        .id(property.getId())
+                        .title(property.getTitle())
+                        .purpose(property.getPurpose())
+                        .propertyType(property.getPropertyType())
+                        .price(property.getPrice())
+                        .currency(property.getCurrency())
+                        .priceUnit(property.getPriceUnit())
+                        .bedrooms(property.getBedrooms())
+                        .bathrooms(property.getBathrooms())
+                        .sizeSqm(property.getSizeSqm())
+                        .province(property.getProvince())
+                        .district(property.getDistrict())
+                        .commune(property.getCommune())
+                        .coverImageUrl(coverImageUrls.get(property.getId()))
+                        .publishedAt(resolvePublishedAt(property))
+                        .build())
+                .toList();
+
+        // 2. Fetch Popular Locations (Limit 4, grouped by province)
+        Pageable locationLimit = PageRequest.of(0, 4);
+        List<Object[]> locationResults = propertyRepository.findPopularLocations(locationLimit);
+
+        List<LocationSummaryResponse> locations = locationResults.stream()
+                .map(row -> LocationSummaryResponse.builder()
+                        .province((String) row[0])
+                        .propertyCount((Long) row[1])
+                        .build())
+                .toList();
+
+        // 3. Assemble and return response
+        return HomeDataResponse.builder()
+                .featuredProperties(featuredProperties)
+                .locations(locations)
+                .build();
     }
 
     private Sort resolveSort(String sortBy) {

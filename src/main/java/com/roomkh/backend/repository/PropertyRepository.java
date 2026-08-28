@@ -52,4 +52,9 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
             @Param("type") PropertyType type,
             @Param("province") String province,
             Pageable pageable);
+
+    @Query("SELECT p.province, COUNT(p.id) FROM Property p WHERE p.status = com.roomkh.backend.entity.PropertyStatus.ACTIVE GROUP BY p.province ORDER BY COUNT(p.id) DESC")
+    List<Object[]> findPopularLocations(Pageable pageable);
+
+    List<Property> findByStatusOrderByCreatedAtDesc(PropertyStatus status, Pageable pageable);
 }

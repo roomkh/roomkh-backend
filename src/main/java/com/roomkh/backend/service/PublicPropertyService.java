@@ -1,5 +1,6 @@
 package com.roomkh.backend.service;
 
+import com.roomkh.backend.dto.property.HomeDataResponse;
 import com.roomkh.backend.dto.property.PublicPropertyDetailResponse;
 import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
 import org.springframework.data.domain.Page;
@@ -17,4 +18,6 @@ public interface PublicPropertyService {
     void recordContactClick(Long propertyId);
 
     List<PublicPropertyListItemResponse> getSimilarProperties(Long propertyId);
+
+    HomeDataResponse getHomeData();
 }
