@@ -14,16 +14,15 @@ import java.util.List;
 public class PropertySpecification {
 
     public static Specification<Property> filterPublicProperties(
-            String purpose, 
-            String propertyType, 
-            BigDecimal minPrice, 
-            BigDecimal maxPrice, 
-            String province) {
-            
+            String purpose,
+            String propertyType,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String location) {
+
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // CRITICAL: Always restrict to ACTIVE status
             predicates.add(criteriaBuilder.equal(root.get("status"), PropertyStatus.ACTIVE));
 
             if (purpose != null && !purpose.isBlank()) {
@@ -46,8 +45,13 @@ public class PropertySpecification {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
             }
 
-            if (province != null && !province.isBlank()) {
-                predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("province")), province.trim().toLowerCase()));
+            if (location != null && !location.isBlank()) {
+                String searchPattern = "%" + location.trim().toLowerCase() + "%";
+                Predicate provinceMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("province")), searchPattern);
+                Predicate districtMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("district")), searchPattern);
+                Predicate communeMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("commune")), searchPattern);
+
+                predicates.add(criteriaBuilder.or(provinceMatch, districtMatch, communeMatch));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
