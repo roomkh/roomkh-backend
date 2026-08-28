@@ -2,6 +2,7 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.dto.comon.PageMeta;
+import com.roomkh.backend.dto.property.HomeDataResponse;
 import com.roomkh.backend.dto.property.PublicPropertyDetailResponse;
 import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
 import com.roomkh.backend.service.PublicPropertyService;
@@ -24,6 +25,19 @@ import java.util.List;
 public class PublicPropertyController {
 
     private final PublicPropertyService publicPropertyService;
+
+    @GetMapping("/home")
+    @Operation(
+            summary = "Get home page data",
+            description = "Aggregates featured properties and popular locations for the landing page in a single request."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Home page data retrieved successfully")
+    })
+    public ResponseEntity<ApiResponse<HomeDataResponse>> getHomeData() {
+        HomeDataResponse response = publicPropertyService.getHomeData();
+        return ResponseEntity.ok(ApiResponse.success("Home page data retrieved successfully.", response));
+    }
 
     @GetMapping("/{propertyId}/similar")
     @Operation(
