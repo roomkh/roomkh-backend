@@ -35,6 +35,57 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PublicPropertyListItemResponse> getSimilarProperties(Long propertyId) {
+        // 1. Fetch reference property
+        Property referenceProperty = propertyRepository.findByIdAndStatus(propertyId, PropertyStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Reference property not found or unavailable."));
+
+        // 2. Query similar properties with a limit of 4
+        Pageable limit = PageRequest.of(0, 4);
+        List<Property> similarProperties = propertyRepository.findSimilarProperties(
+                referenceProperty.getId(),
+                referenceProperty.getPropertyType(),
+                referenceProperty.getProvince(),
+                limit
+        );
+
+        if (similarProperties.isEmpty()) {
+            return List.of();
+        }
+
+        // 3. Fetch cover images in bulk
+        List<Long> similarPropertyIds = similarProperties.stream().map(Property::getId).toList();
+        Map<Long, String> coverImageUrls = propertyImageRepository.findByProperty_IdInAndCoverTrue(similarPropertyIds).stream()
+                .collect(Collectors.toMap(
+                        img -> img.getProperty().getId(),
+                        PropertyImage::getUrl
+                ));
+
+        // 4. Map to DTO
+        return similarProperties.stream()
+                .map(property -> PublicPropertyListItemResponse.builder()
+                        .id(property.getId())
+                        .title(property.getTitle())
+                        .purpose(property.getPurpose())
+                        .propertyType(property.getPropertyType())
+                        .price(property.getPrice())
+                        .currency(property.getCurrency())
+                        .priceUnit(property.getPriceUnit())
+                        .bedrooms(property.getBedrooms())
+                        .bathrooms(property.getBathrooms())
+                        .sizeSqm(property.getSizeSqm())
+                        .province(property.getProvince())
+                        .district(property.getDistrict())
+                        .commune(property.getCommune())
+                        .coverImageUrl(coverImageUrls.get(property.getId()))
+                        .publishedAt(resolvePublishedAt(property)) // Utilizing the existing helper method
+                        .build())
+                .toList();
+    }
+
     @Override
     @Transactional
     public PublicPropertyDetailResponse getPropertyDetail(Long propertyId) {
