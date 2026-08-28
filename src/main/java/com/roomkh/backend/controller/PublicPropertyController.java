@@ -25,6 +25,23 @@ public class PublicPropertyController {
 
     private final PublicPropertyService publicPropertyService;
 
+    @GetMapping("/{propertyId}/similar")
+    @Operation(
+            summary = "Get similar properties",
+            description = "Fetches up to 4 ACTIVE properties of the same type and in the same province, excluding the currently requested property."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Similar properties retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Reference property not found or unavailable")
+    })
+    public ResponseEntity<com.roomkh.backend.dto.comon.ApiResponse<List<PublicPropertyListItemResponse>>> getSimilarProperties(
+            @Parameter(description = "Reference Property ID")
+            @PathVariable Long propertyId) {
+
+        List<PublicPropertyListItemResponse> response = publicPropertyService.getSimilarProperties(propertyId);
+        return ResponseEntity.ok(com.roomkh.backend.dto.comon.ApiResponse.success("Similar properties retrieved successfully.", response));
+    }
+
     @GetMapping("/{propertyId}")
     @Operation(
             summary = "Get public property details",

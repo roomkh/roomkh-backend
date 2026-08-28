@@ -2,6 +2,7 @@ package com.roomkh.backend.repository;
 
 import com.roomkh.backend.entity.Property;
 import com.roomkh.backend.entity.PropertyStatus;
+import com.roomkh.backend.entity.PropertyType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSpecificationExecutor<Property> {
@@ -43,4 +45,11 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     Optional<Property> findByIdForUpdate(@Param("id") Long id);
 
     Optional<Property> findByIdAndStatus(Long id, PropertyStatus status);
+
+    @Query("SELECT p FROM Property p WHERE p.status = 'ACTIVE' AND p.id != :propertyId AND p.propertyType = :type AND p.province = :province ORDER BY p.createdAt DESC")
+    List<Property> findSimilarProperties(
+            @Param("propertyId") Long propertyId,
+            @Param("type") PropertyType type,
+            @Param("province") String province,
+            Pageable pageable);
 }

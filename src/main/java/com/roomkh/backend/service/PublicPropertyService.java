@@ -5,6 +5,7 @@ import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
 import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface PublicPropertyService {
     Page<PublicPropertyListItemResponse> searchProperties(
@@ -14,4 +15,6 @@ public interface PublicPropertyService {
     PublicPropertyDetailResponse getPropertyDetail(Long propertyId);
 
     void recordContactClick(Long propertyId);
+
+    List<PublicPropertyListItemResponse> getSimilarProperties(Long propertyId);
 }
