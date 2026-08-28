@@ -2,6 +2,7 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.dto.comon.PageMeta;
+import com.roomkh.backend.dto.property.PublicPropertyDetailResponse;
 import com.roomkh.backend.dto.property.PublicPropertyListItemResponse;
 import com.roomkh.backend.service.PublicPropertyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,10 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +24,20 @@ import java.util.List;
 public class PublicPropertyController {
 
     private final PublicPropertyService publicPropertyService;
+
+    @GetMapping("/{propertyId}")
+    @Operation(
+            summary = "Get public property details",
+            description = "Fetches the full details of an ACTIVE property for public display. Automatically increments the property's view count."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Property details retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Property not found or unavailable")
+    })
+    public ResponseEntity<ApiResponse<PublicPropertyDetailResponse>> getPropertyDetail(@Parameter(description = "Property ID") @PathVariable Long propertyId) {
+        PublicPropertyDetailResponse response = publicPropertyService.getPropertyDetail(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property details retrieved successfully.", response));
+    }
 
     @GetMapping
     @Operation(
