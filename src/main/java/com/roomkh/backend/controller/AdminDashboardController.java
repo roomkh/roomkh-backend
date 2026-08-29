@@ -1,9 +1,6 @@
 package com.roomkh.backend.controller;
 
-import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
-import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
-import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
-import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
+import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.service.AdminDashboardService;
@@ -26,6 +23,36 @@ import org.springframework.web.bind.annotation.*;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @GetMapping("/properties")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get all properties (Admin)",
+            description = "Retrieves a paginated list of properties with UI filters for search, status, type, and city.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Page<AdminDashboardPropertyResponse>>> getProperties(
+            @Parameter(description = "Search by title, location, or owner name")
+            @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter by status (e.g., ACTIVE, PENDING)")
+            @RequestParam(required = false) String status,
+
+            @Parameter(description = "Filter by property type")
+            @RequestParam(required = false) String type,
+
+            @Parameter(description = "Filter by city")
+            @RequestParam(required = false) String city,
+
+            @Parameter(description = "Page number, starting at 1")
+            @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Items per page")
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<AdminDashboardPropertyResponse> response = adminDashboardService.getProperties(search, status, type, city, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Properties retrieved successfully.", response));
+    }
 
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")

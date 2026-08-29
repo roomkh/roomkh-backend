@@ -10,6 +10,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -135,6 +136,9 @@ public class Property {
     )
     @Builder.Default
     private Set<Amenity> amenities = new HashSet<>();
+
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY)
+    private List<PropertyImage> images;
 
     @PrePersist
     protected void onCreate() {

@@ -1,9 +1,6 @@
 package com.roomkh.backend.service.impl;
 
-import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
-import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
-import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
-import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
+import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
@@ -28,6 +25,64 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final PropertyRepository propertyRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminDashboardPropertyResponse> getProperties(String search, String status, String type, String city, int page, int size) {
+        if (page < 1) throw new IllegalArgumentException("page must be at least 1.");
+
+        String safeSearch = (search == null) ? "" : search.trim();
+        String safeCity = (city == null || city.equalsIgnoreCase("All Cities")) ? "" : city.trim();
+
+        PropertyStatus targetStatus = null;
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("All Status")) {
+            try {
+                targetStatus = PropertyStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        PropertyType targetType = null;
+        if (type != null && !type.trim().isEmpty() && !type.equalsIgnoreCase("All Types")) {
+            try {
+                targetType = PropertyType.valueOf(type.toUpperCase().replace(" ", "_"));
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Property> propertiesPage = propertyRepository.findPropertiesWithFilters(
+                safeSearch, targetStatus, targetType, safeCity, pageable);
+
+        return propertiesPage.map(p -> {
+            String combinedLocation = "";
+            if (p.getDistrict() != null && !p.getDistrict().isEmpty()) {
+                combinedLocation += p.getDistrict();
+            }
+            if (p.getProvince() != null && !p.getProvince().isEmpty()) {
+                combinedLocation += (combinedLocation.isEmpty() ? "" : ", ") + p.getProvince();
+            }
+
+            return AdminDashboardPropertyResponse.builder()
+                    .id(p.getId())
+                    .propertyCode("#LST-" + p.getId())
+                    .title(p.getTitle())
+                    .ownerName(p.getSeller() != null ? p.getSeller().getFullName() : "Unknown")
+                    .ownerId(p.getSeller() != null ? "OWN-" + p.getSeller().getId() : "N/A")
+                    .ownerAvatarUrl(p.getSeller() != null ? p.getSeller().getAvatarUrl() : null)
+                    .type(p.getPropertyType() != null ? p.getPropertyType().name() : "N/A")
+                    .location(combinedLocation.isEmpty() ? "Unknown" : combinedLocation)
+                    .price(p.getPrice())
+                    .status(p.getStatus() != null ? p.getStatus().name() : "PENDING")
+                    .coverImageUrl(p.getImages() != null ?
+                            p.getImages().stream()
+                                    .filter(PropertyImage::isCover)
+                                    .findFirst()
+                                    .map(PropertyImage::getUrl)
+                                    .orElse(null)
+                            : null)
+                    .build();
+        });
+    }
 
     @Override
     @Transactional
