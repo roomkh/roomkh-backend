@@ -2,6 +2,7 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
 import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
+import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.service.AdminDashboardService;
@@ -10,14 +11,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
@@ -74,5 +73,20 @@ public class AdminDashboardController {
     public ResponseEntity<ApiResponse<AdminDashboardStatsResponse>> getDashboardStats() {
         AdminDashboardStatsResponse stats = adminDashboardService.getDashboardStats();
         return ResponseEntity.ok(ApiResponse.success("Dashboard stats retrieved successfully.", stats));
+    }
+
+    @PatchMapping("/users/{userId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Update user or seller status",
+            description = "Allows an admin to update a user's account status (ACTIVATE, INACTIVE, BAN) or approve/reject a pending seller.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Void>> updateUserStatus(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
+
+        adminDashboardService.updateUserStatus(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("User status updated successfully.", null));
     }
 }

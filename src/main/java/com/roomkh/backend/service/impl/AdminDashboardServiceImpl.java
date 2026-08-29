@@ -2,9 +2,9 @@ package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
 import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
-import com.roomkh.backend.entity.PropertyStatus;
-import com.roomkh.backend.entity.RoleName;
-import com.roomkh.backend.entity.User;
+import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
+import com.roomkh.backend.entity.*;
+import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.AdminDashboardService;
@@ -22,6 +22,43 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
+
+    @Override
+    @Transactional
+    public void updateUserStatus(Long userId, UpdateUserStatusRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        String action = request.getAction().toUpperCase();
+
+        switch (action) {
+            case "ACTIVATE":
+                user.setAccountStatus(AccountStatus.ACTIVE);
+                break;
+            case "INACTIVE":
+                user.setAccountStatus(AccountStatus.INACTIVE);
+                break;
+            case "BAN":
+                user.setAccountStatus(AccountStatus.BANNED);
+                break;
+            case "APPROVE_SELLER":
+                if (user.getSellerStatus() == null) {
+                    throw new IllegalArgumentException("Cannot approve: User is not a seller.");
+                }
+                user.setSellerStatus(SellerStatus.APPROVED);
+                break;
+            case "REJECT_SELLER":
+                if (user.getSellerStatus() == null) {
+                    throw new IllegalArgumentException("Cannot reject: User is not a seller.");
+                }
+                user.setSellerStatus(SellerStatus.REJECTED);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid action. Allowed values: ACTIVATE, INACTIVE, BAN, APPROVE_SELLER, REJECT_SELLER");
+        }
+
+        userRepository.save(user);
+    }
 
     @Override
     @Transactional(readOnly = true)
