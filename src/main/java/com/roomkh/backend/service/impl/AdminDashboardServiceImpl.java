@@ -1,11 +1,14 @@
 package com.roomkh.backend.service.impl;
 
+import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
 import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
 import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
 import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
 import com.roomkh.backend.entity.*;
+import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyRepository;
+import com.roomkh.backend.repository.RoleRepository;
 import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,39 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
+
+    @Override
+    @Transactional
+    public void createUser(AdminCreateUserRequest request) {
+        if (userRepository.findByEmailIgnoreCase(request.getEmail()).isPresent()) {
+            throw new BadRequestException("Email already exists.");
+        }
+
+        RoleName roleName;
+        try {
+            roleName = RoleName.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role. Allowed values: USER, SELLER, ADMIN");
+        }
+
+        Role role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName));
+
+        User newUser = User.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .phoneNumber(request.getPhoneNumber())
+                .role(role)
+                .authProvider(AuthProvider.LOCAL)
+                .accountStatus(AccountStatus.ACTIVE)
+                .sellerStatus(roleName == RoleName.SELLER ? SellerStatus.APPROVED : null)
+                .build();
+
+        userRepository.save(newUser);
+    }
 
     @Override
     @Transactional

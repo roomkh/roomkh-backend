@@ -1,5 +1,6 @@
 package com.roomkh.backend.service;
 
+import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
 import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
 import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
 import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
@@ -17,4 +18,6 @@ public interface AdminDashboardService {
             int size);
 
     void updateUserStatus(Long userId, UpdateUserStatusRequest request);
+
+    void createUser(AdminCreateUserRequest request);
 }
