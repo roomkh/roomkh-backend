@@ -1,5 +1,6 @@
 package com.roomkh.backend.controller;
 
+import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
 import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
 import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
 import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
@@ -25,6 +26,18 @@ import org.springframework.web.bind.annotation.*;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @PostMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Manually create a new user or seller",
+            description = "Allows administrators to bypass public registration and instantly create activated user or approved seller accounts.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Void>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
+        adminDashboardService.createUser(request);
+        return ResponseEntity.ok(ApiResponse.success("User created successfully.", null));
+    }
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
