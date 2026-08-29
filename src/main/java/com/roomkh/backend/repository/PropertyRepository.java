@@ -62,4 +62,19 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     List<String> findDistinctProvincesWithActiveProperties();
 
     long countByStatus(com.roomkh.backend.entity.PropertyStatus status);
+
+    @Query("SELECT p FROM Property p WHERE " +
+            "(:search = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(p.address) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(p.province) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(p.seller.fullName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (:status IS NULL OR p.status = :status) " +
+            "AND (:type IS NULL OR p.propertyType = :type) " +
+            "AND (:city = '' OR LOWER(p.province) = LOWER(:city))")
+    Page<Property> findPropertiesWithFilters(
+            @Param("search") String search,
+            @Param("status") PropertyStatus status,
+            @Param("type") PropertyType type,
+            @Param("city") String city,
+            Pageable pageable);
 }

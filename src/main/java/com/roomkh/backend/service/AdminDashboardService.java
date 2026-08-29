@@ -1,9 +1,6 @@
 package com.roomkh.backend.service;
 
-import com.roomkh.backend.dto.admin.AdminCreateUserRequest;
-import com.roomkh.backend.dto.admin.AdminDashboardStatsResponse;
-import com.roomkh.backend.dto.admin.AdminUserListItemResponse;
-import com.roomkh.backend.dto.admin.UpdateUserStatusRequest;
+import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.entity.RoleName;
 import org.springframework.data.domain.Page;
 
@@ -20,4 +17,12 @@ public interface AdminDashboardService {
     void updateUserStatus(Long userId, UpdateUserStatusRequest request);
 
     void createUser(AdminCreateUserRequest request);
+
+    Page<AdminDashboardPropertyResponse> getProperties(
+            String search,
+            String status,
+            String type,
+            String city,
+            int page,
+            int size);
 }
