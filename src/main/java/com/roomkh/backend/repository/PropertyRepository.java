@@ -60,4 +60,6 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
 
     @Query("SELECT DISTINCT p.province FROM Property p WHERE p.status = 'ACTIVE' AND p.province IS NOT NULL")
     List<String> findDistinctProvincesWithActiveProperties();
+
+    long countByStatus(com.roomkh.backend.entity.PropertyStatus status);
 }

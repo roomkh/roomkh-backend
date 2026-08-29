@@ -1,5 +1,6 @@
 package com.roomkh.backend.repository;
 
+import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
     Optional<User> findByPhoneNumber(String phoneNumber);
     boolean existsByPhoneNumber(String phoneNumber);
+
+    long countByRole_Name(RoleName name);
 }
