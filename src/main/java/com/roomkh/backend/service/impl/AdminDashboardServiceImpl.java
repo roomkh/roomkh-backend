@@ -17,6 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Service
 @RequiredArgsConstructor
 public class AdminDashboardServiceImpl implements AdminDashboardService {
@@ -28,7 +33,65 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminDashboardPropertyResponse> getProperties(String search, String status, String type, String city, int page, int size) {
+    public AdminPropertyStatsResponse getPropertyStats(LocalDate startDate, LocalDate endDate) {
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30); // Default to last 30 days
+        }
+        if (startDate.isAfter(endDate)) {
+            LocalDate temp = startDate;
+            startDate = endDate;
+            endDate = temp;
+        }
+
+        // Calculate days in the current period to find the exact previous period length
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+
+        LocalDate previousEndDate = startDate.minusDays(1);
+        LocalDate previousStartDate = previousEndDate.minusDays(daysBetween - 1);
+
+        OffsetDateTime currentStart = startDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime currentEnd = endDate.atTime(LocalTime.MAX).atOffset(ZoneOffset.UTC);
+
+        OffsetDateTime previousStart = previousStartDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime previousEnd = previousEndDate.atTime(LocalTime.MAX).atOffset(ZoneOffset.UTC);
+
+        // Fetch counts for current period
+        long currentTotal = propertyRepository.countByCreatedAtBetween(currentStart, currentEnd);
+        long currentActive = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.ACTIVE, currentStart, currentEnd);
+        long currentPending = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.PENDING, currentStart, currentEnd);
+        long currentInactive = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.INACTIVE, currentStart, currentEnd);
+
+        // Fetch counts for previous period
+        long previousTotal = propertyRepository.countByCreatedAtBetween(previousStart, previousEnd);
+        long previousActive = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.ACTIVE, previousStart, previousEnd);
+        long previousPending = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.PENDING, previousStart, previousEnd);
+        long previousInactive = propertyRepository.countByStatusAndCreatedAtBetween(PropertyStatus.INACTIVE, previousStart, previousEnd);
+
+        return AdminPropertyStatsResponse.builder()
+                .totalListings(currentTotal)
+                .totalTrend(calculateTrend(currentTotal, previousTotal))
+                .activeListings(currentActive)
+                .activeTrend(calculateTrend(currentActive, previousActive))
+                .pendingListings(currentPending)
+                .pendingTrend(calculateTrend(currentPending, previousPending))
+                .inactiveListings(currentInactive)
+                .inactiveTrend(calculateTrend(currentInactive, previousInactive))
+                .build();
+    }
+
+    private Double calculateTrend(long current, long previous) {
+        double trend = previous == 0
+                ? (current > 0 ? 100.0 : 0.0)
+                : ((double) (current - previous) / previous) * 100.0;
+        return Math.round(trend * 10.0) / 10.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminDashboardPropertyResponse> getProperties(String search, String status, String type, String city, LocalDate startDate, LocalDate endDate, int page, int size) {
         if (page < 1) throw new IllegalArgumentException("page must be at least 1.");
 
         String safeSearch = (search == null) ? "" : search.trim();
@@ -48,10 +111,18 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             } catch (IllegalArgumentException ignored) {}
         }
 
+        OffsetDateTime start = (startDate != null)
+                ? startDate.atStartOfDay().atOffset(ZoneOffset.UTC)
+                : OffsetDateTime.of(2000, 1, 1, 0, 0, 0, 0, java.time.ZoneOffset.UTC);
+
+        OffsetDateTime end = (endDate != null)
+                ? endDate.atTime(java.time.LocalTime.MAX).atOffset(ZoneOffset.UTC)
+                : OffsetDateTime.now().plusYears(100);
+
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Property> propertiesPage = propertyRepository.findPropertiesWithFilters(
-                safeSearch, targetStatus, targetType, safeCity, pageable);
+                safeSearch, targetStatus, targetType, safeCity, start, end, pageable);
 
         return propertiesPage.map(p -> {
             String combinedLocation = "";

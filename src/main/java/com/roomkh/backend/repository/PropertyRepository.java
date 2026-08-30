@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,11 +71,18 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
             "LOWER(p.seller.fullName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:status IS NULL OR p.status = :status) " +
             "AND (:type IS NULL OR p.propertyType = :type) " +
-            "AND (:city = '' OR LOWER(p.province) = LOWER(:city))")
+            "AND (:city = '' OR LOWER(p.province) = LOWER(:city)) " +
+            "AND (p.createdAt BETWEEN :startDate AND :endDate)")
     Page<Property> findPropertiesWithFilters(
             @Param("search") String search,
             @Param("status") PropertyStatus status,
             @Param("type") PropertyType type,
             @Param("city") String city,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate,
             Pageable pageable);
+
+    long countByCreatedAtBetween(OffsetDateTime start, OffsetDateTime end);
+
+    long countByStatusAndCreatedAtBetween(PropertyStatus status, OffsetDateTime start, OffsetDateTime end);
 }
