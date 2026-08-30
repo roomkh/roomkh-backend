@@ -12,9 +12,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
@@ -23,6 +26,24 @@ import org.springframework.web.bind.annotation.*;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @GetMapping("/properties/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get property statistics",
+            description = "Calculates total, active, pending, and inactive property counts and trends based on a specific date range.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<AdminPropertyStatsResponse>> getPropertyStats(
+            @Parameter(description = "Start date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "End date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        AdminPropertyStatsResponse response = adminDashboardService.getPropertyStats(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Property statistics retrieved successfully.", response));
+    }
 
     @GetMapping("/properties")
     @PreAuthorize("hasRole('ADMIN')")
@@ -44,13 +65,16 @@ public class AdminDashboardController {
             @Parameter(description = "Filter by city")
             @RequestParam(required = false) String city,
 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
             @Parameter(description = "Page number, starting at 1")
             @RequestParam(defaultValue = "1") int page,
 
             @Parameter(description = "Items per page")
             @RequestParam(defaultValue = "10") int size) {
 
-        Page<AdminDashboardPropertyResponse> response = adminDashboardService.getProperties(search, status, type, city, page, size);
+        Page<AdminDashboardPropertyResponse> response = adminDashboardService.getProperties(search, status, type, city, startDate, endDate, page, size);
         return ResponseEntity.ok(ApiResponse.success("Properties retrieved successfully.", response));
     }
 

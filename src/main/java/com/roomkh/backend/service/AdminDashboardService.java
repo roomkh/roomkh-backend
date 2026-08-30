@@ -4,6 +4,8 @@ import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.entity.RoleName;
 import org.springframework.data.domain.Page;
 
+import java.time.LocalDate;
+
 public interface AdminDashboardService {
     AdminDashboardStatsResponse getDashboardStats();
 
@@ -23,6 +25,10 @@ public interface AdminDashboardService {
             String status,
             String type,
             String city,
+            LocalDate startDate,
+            LocalDate endDate,
             int page,
             int size);
+
+    AdminPropertyStatsResponse getPropertyStats(LocalDate startDate, LocalDate endDate);
 }
