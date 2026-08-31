@@ -85,4 +85,6 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     long countByCreatedAtBetween(OffsetDateTime start, OffsetDateTime end);
 
     long countByStatusAndCreatedAtBetween(PropertyStatus status, OffsetDateTime start, OffsetDateTime end);
+
+    long countBySellerId(Long sellerId);
 }

@@ -484,4 +484,140 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .ownersPendingApproval(ownersPending)
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminOwnerListItemResponse> getOwners(String search, String status, PlanType plan, LocalDate startDate, LocalDate endDate, int page, int size) {
+        if (page < 1) throw new IllegalArgumentException("page must be at least 1.");
+
+        String safeSearch = (search == null) ? "" : search.trim();
+
+        String statusType = "ALL";
+        com.roomkh.backend.entity.AccountStatus targetAccountStatus = null;
+        com.roomkh.backend.entity.SellerStatus pendingSellerStatus = com.roomkh.backend.entity.SellerStatus.PENDING;
+
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equalsIgnoreCase("PENDING")) {
+                statusType = "PENDING";
+            } else {
+                statusType = "ACCOUNT";
+                try {
+                    targetAccountStatus = com.roomkh.backend.entity.AccountStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    statusType = "ALL";
+                }
+            }
+        }
+
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<User> ownersPage = userRepository.findOwnersFiltered(
+                safeSearch, statusType, pendingSellerStatus, targetAccountStatus, plan, startDateTime, endDateTime, pageable);
+
+        return ownersPage.map(user -> AdminOwnerListItemResponse.builder()
+                .id(user.getId())
+                .ownerName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .plan(user.getPlanType() != null ? user.getPlanType().name() : "FREE")
+
+                .propertiesCount(propertyRepository.countBySellerId(user.getId()))
+
+                .joinDate(user.getCreatedAt())
+                .status(
+                        (user.getSellerStatus() != null && user.getSellerStatus().name().equals("PENDING"))
+                                ? "PENDING"
+                                : (user.getAccountStatus() != null ? user.getAccountStatus().name() : null)
+                )
+                .build());
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminOwnerStatsResponse getOwnerStats(LocalDate startDate, LocalDate endDate) {
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDate start = startDate != null ? startDate : LocalDate.of(2000, 1, 1);
+
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(LocalTime.MAX);
+
+        long totalOwners = userRepository.countByRoleNameAndCreatedAtBetween(
+                RoleName.SELLER, startDateTime, endDateTime);
+
+        long activeOwners = userRepository.countByRoleNameAndAccountStatusAndCreatedAtBetween(
+                RoleName.SELLER, AccountStatus.ACTIVE, startDateTime, endDateTime);
+
+        long pendingOwners = userRepository.countByRoleNameAndSellerStatusAndCreatedAtBetween(
+                RoleName.SELLER, SellerStatus.PENDING, startDateTime, endDateTime);
+
+        // Assuming your enum for inactive users is SUSPENDED. Change to INACTIVE if that matches your AccountStatus enum.
+        long inactiveOwners = userRepository.countByRoleNameAndAccountStatusAndCreatedAtBetween(
+                RoleName.SELLER, AccountStatus.INACTIVE, startDateTime, endDateTime);
+
+        long bannedOwners = userRepository.countByRoleNameAndAccountStatusAndCreatedAtBetween(
+                RoleName.SELLER, AccountStatus.BANNED, startDateTime, endDateTime);
+        inactiveOwners += bannedOwners;
+
+        return AdminOwnerStatsResponse.builder()
+                .totalOwners(totalOwners)
+                .activeOwners(activeOwners)
+                .pendingOwners(pendingOwners)
+                .inactiveOwners(inactiveOwners)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void exportOwnersToCsv(String search, String status, PlanType plan, LocalDate startDate, LocalDate endDate, java.io.Writer writer) throws java.io.IOException {
+        String safeSearch = (search == null) ? "" : search.trim();
+
+        String statusType = "ALL";
+        com.roomkh.backend.entity.AccountStatus targetAccountStatus = null;
+        com.roomkh.backend.entity.SellerStatus pendingSellerStatus = com.roomkh.backend.entity.SellerStatus.PENDING;
+
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equalsIgnoreCase("PENDING")) {
+                statusType = "PENDING";
+            } else {
+                statusType = "ACCOUNT";
+                try {
+                    targetAccountStatus = com.roomkh.backend.entity.AccountStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    statusType = "ALL";
+                }
+            }
+        }
+
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
+        Page<User> ownersPage = userRepository.findOwnersFiltered(
+                safeSearch, statusType, pendingSellerStatus, targetAccountStatus, plan, startDateTime, endDateTime, Pageable.unpaged());
+
+        writer.write("ID,Owner Name,Email,Phone,Plan,Properties Count,Join Date,Status\n");
+
+        for (User user : ownersPage.getContent()) {
+            String id = String.valueOf(user.getId());
+
+            // Replacing commas in text fields to prevent CSV column breaking
+            String name = user.getFullName() != null ? user.getFullName().replace(",", " ") : "";
+            String email = user.getEmail() != null ? user.getEmail().replace(",", " ") : "";
+            String phone = user.getPhoneNumber() != null ? user.getPhoneNumber().replace(",", " ") : "";
+
+            String planName = user.getPlanType() != null ? user.getPlanType().name() : "FREE";
+            String propertiesCount = String.valueOf(propertyRepository.countBySellerId(user.getId()));
+            String joinDate = user.getCreatedAt() != null ? user.getCreatedAt().toLocalDate().toString() : "";
+
+            String userStatus = (user.getSellerStatus() != null && user.getSellerStatus().name().equals("PENDING"))
+                    ? "PENDING"
+                    : (user.getAccountStatus() != null ? user.getAccountStatus().name() : "");
+
+            writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
+                    id, name, email, phone, planName, propertiesCount, joinDate, userStatus));
+        }
+    }
 }

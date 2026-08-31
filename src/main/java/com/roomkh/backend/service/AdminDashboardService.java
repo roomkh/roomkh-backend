@@ -1,6 +1,7 @@
 package com.roomkh.backend.service;
 
 import com.roomkh.backend.dto.admin.*;
+import com.roomkh.backend.entity.PlanType;
 import com.roomkh.backend.entity.RoleName;
 import org.springframework.data.domain.Page;
 
@@ -42,4 +43,10 @@ public interface AdminDashboardService {
     byte[] exportUsersToExcel();
 
     AdminUserStatsResponse getUserStats(LocalDate startDate, LocalDate endDate);
+
+    Page<AdminOwnerListItemResponse> getOwners(String search, String status, PlanType plan, LocalDate startDate, LocalDate endDate, int page, int size);
+
+    AdminOwnerStatsResponse getOwnerStats(LocalDate startDate, LocalDate endDate);
+
+    void exportOwnersToCsv(String search, String status, PlanType plan, LocalDate startDate, LocalDate endDate, java.io.Writer writer) throws java.io.IOException;
 }

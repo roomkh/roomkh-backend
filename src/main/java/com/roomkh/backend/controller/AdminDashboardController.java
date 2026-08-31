@@ -2,6 +2,7 @@ package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.dto.comon.ApiResponse;
+import com.roomkh.backend.entity.PlanType;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.service.AdminDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,88 @@ import java.time.LocalDate;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @GetMapping(value = "/owners/export", produces = "text/csv")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Export owners to CSV",
+            description = "Exports a filtered list of owners as a downloadable CSV file.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public void exportOwnersToCsv(
+            @Parameter(description = "Search by name, email, or phone")
+            @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter by status (e.g., ACTIVE, INACTIVE, PENDING)")
+            @RequestParam(required = false) String status,
+
+            @Parameter(description = "Filter by exact plan type (e.g., FREE, BUSINESS, PRO)")
+            @RequestParam(required = false) PlanType plan,
+
+            @Parameter(description = "Filter by start date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "Filter by end date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
+            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"owners_export.csv\"");
+
+        adminDashboardService.exportOwnersToCsv(search, status, plan, startDate, endDate, response.getWriter());
+    }
+
+    @GetMapping("/owners/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get admin owner statistics",
+            description = "Retrieves aggregate owner statistics with optional date range filtering specifically for the Owners Dashboard.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<AdminOwnerStatsResponse>> getOwnerStats(
+            @Parameter(description = "Start date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "End date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        AdminOwnerStatsResponse stats = adminDashboardService.getOwnerStats(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Owner statistics retrieved successfully.", stats));
+    }
+
+    @GetMapping("/owners")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get all owners (Admin)",
+            description = "Retrieves a paginated list of owners with optional filtering by search term, status, plan, and registration date.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Page<AdminOwnerListItemResponse>>> getOwners(
+            @Parameter(description = "Search by name, email, or phone")
+            @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter by status (e.g., ACTIVE, INACTIVE, PENDING)")
+            @RequestParam(required = false) String status,
+
+            @Parameter(description = "Filter by exact plan type (e.g., FREE, BUSINESS, PRO)")
+            @RequestParam(required = false) PlanType plan,
+
+            @Parameter(description = "Filter by start date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "Filter by end date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
+            @Parameter(description = "Page number, starting at 1")
+            @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Items per page")
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<AdminOwnerListItemResponse> response = adminDashboardService.getOwners(search, status, plan, startDate, endDate, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Owners retrieved successfully.", response));
+    }
 
     @GetMapping("/users/stats")
     @PreAuthorize("hasRole('ADMIN')")
