@@ -31,4 +31,6 @@ public interface AdminDashboardService {
             int size);
 
     AdminPropertyStatsResponse getPropertyStats(LocalDate startDate, LocalDate endDate);
+
+    AdminPropertyDetailResponse getPropertyDetail(Long id);
 }

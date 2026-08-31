@@ -27,6 +27,21 @@ public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
 
+    @GetMapping("/properties/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get property details (Admin)",
+            description = "Retrieves complete nested details of a specific property for moderation purposes.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<AdminPropertyDetailResponse>> getPropertyDetail(
+            @Parameter(description = "Property ID")
+            @PathVariable Long id) {
+
+        AdminPropertyDetailResponse response = adminDashboardService.getPropertyDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("Property details retrieved successfully.", response));
+    }
+
     @GetMapping("/properties/stats")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
