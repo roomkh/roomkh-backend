@@ -33,6 +33,69 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
+    public AdminPropertyDetailResponse getPropertyDetail(Long id) {
+        Property p = propertyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + id));
+
+        String combinedLocation = "";
+        if (p.getDistrict() != null && !p.getDistrict().isEmpty()) {
+            combinedLocation += p.getDistrict();
+        }
+        if (p.getProvince() != null && !p.getProvince().isEmpty()) {
+            combinedLocation += (combinedLocation.isEmpty() ? "" : ", ") + p.getProvince();
+        }
+
+        String coverImage = null;
+        java.util.List<String> allImages = new java.util.ArrayList<>();
+        if (p.getImages() != null) {
+            for (PropertyImage img : p.getImages()) {
+                allImages.add(img.getUrl());
+                if (img.isCover()) {
+                    coverImage = img.getUrl();
+                }
+            }
+        }
+
+        java.util.List<String> amenityNames = new java.util.ArrayList<>();
+        if (p.getAmenities() != null) {
+            for (Amenity a : p.getAmenities()) {
+                amenityNames.add(a.getName());
+            }
+        }
+
+        return AdminPropertyDetailResponse.builder()
+                .id(p.getId())
+                .propertyCode("#LST-" + p.getId())
+                .title(p.getTitle())
+                .description(p.getDescription())
+                .status(p.getStatus() != null ? p.getStatus().name() : "PENDING")
+                .type(p.getPropertyType() != null ? p.getPropertyType().name() : "N/A")
+                .purpose(p.getPurpose() != null ? p.getPurpose().name() : "N/A")
+                .price(p.getPrice())
+                .currency(p.getCurrency())
+                .priceUnit(p.getPriceUnit() != null ? p.getPriceUnit().name() : "N/A")
+                .location(combinedLocation.isEmpty() ? "Unknown" : combinedLocation)
+                .address(p.getAddress())
+                .bedrooms(p.getBedrooms())
+                .bathrooms(p.getBathrooms())
+                .sizeSqm(p.getSizeSqm())
+                .floor(p.getFloor())
+                .furnished(p.isFurnished())
+                .ownerId(p.getSeller() != null ? "OWN-" + p.getSeller().getId() : "N/A")
+                .ownerName(p.getSeller() != null ? p.getSeller().getFullName() : "Unknown")
+                .ownerPhone(p.getSeller() != null ? p.getSeller().getPhoneNumber() : null)
+                .ownerEmail(p.getSeller() != null ? p.getSeller().getEmail() : null)
+                .ownerAvatarUrl(p.getSeller() != null ? p.getSeller().getAvatarUrl() : null)
+                .coverImageUrl(coverImage)
+                .imageUrls(allImages)
+                .amenities(amenityNames)
+                .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AdminPropertyStatsResponse getPropertyStats(LocalDate startDate, LocalDate endDate) {
         if (endDate == null) {
             endDate = LocalDate.now();
