@@ -28,6 +28,24 @@ public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
 
+    @GetMapping("/users/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get admin user statistics",
+            description = "Retrieves aggregate user statistics with optional date range filtering specifically for the Users Dashboard.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<AdminUserStatsResponse>> getUserStats(
+            @Parameter(description = "Start date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "End date in format YYYY-MM-DD")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        AdminUserStatsResponse stats = adminDashboardService.getUserStats(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("User statistics retrieved successfully.", stats));
+    }
+
 
     @GetMapping("/dashboard/users/export")
     @PreAuthorize("hasRole('ADMIN')")
@@ -182,13 +200,19 @@ public class AdminDashboardController {
             @Parameter(description = "Filter by status (e.g., ACTIVE, INACTIVE, PENDING)")
             @RequestParam(required = false) String status,
 
+            @Parameter(description = "Filter by start date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "Filter by end date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
             @Parameter(description = "Page number, starting at 1")
             @RequestParam(defaultValue = "1") int page,
 
             @Parameter(description = "Items per page")
             @RequestParam(defaultValue = "10") int size) {
 
-        Page<AdminUserListItemResponse> response = adminDashboardService.getUsers(search, role, status, page, size);
+        Page<AdminUserListItemResponse> response = adminDashboardService.getUsers(search, role, status, startDate, endDate, page, size);
         return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully.", response));
     }
 

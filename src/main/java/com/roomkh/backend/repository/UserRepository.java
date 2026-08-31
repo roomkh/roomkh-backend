@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -21,18 +22,33 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole_Name(RoleName name);
 
     @Query("SELECT u FROM User u WHERE " +
-            "(:search = '' OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(u.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-            "AND (:roleName IS NULL OR u.role.name = :roleName) " +
-            "AND (:statusType = 'ALL' OR " +
-            "     (:statusType = 'PENDING' AND u.sellerStatus = :pendingEnum) OR " +
-            "     (:statusType = 'ACCOUNT' AND u.accountStatus = :accountEnum AND (u.sellerStatus IS NULL OR u.sellerStatus != :pendingEnum)))")
+            "(:search = '' OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR u.phoneNumber LIKE CONCAT('%', :search, '%')) " +
+            "AND (:role IS NULL OR u.role.name = :role) " +
+            "AND (" +
+            "  :statusType = 'ALL' " +
+            "  OR (:statusType = 'PENDING' AND u.sellerStatus = :pendingSellerStatus) " +
+            "  OR (:statusType = 'ACCOUNT' AND u.accountStatus = :targetAccountStatus) " +
+            ") " +
+            "AND (cast(:startDateTime as timestamp) IS NULL OR u.createdAt >= :startDateTime) " +
+            "AND (cast(:endDateTime as timestamp) IS NULL OR u.createdAt <= :endDateTime)")
     Page<User> findUsersWithAllFilters(
             @Param("search") String search,
-            @Param("roleName") RoleName roleName,
+            @Param("role") RoleName role,
             @Param("statusType") String statusType,
-            @Param("pendingEnum") SellerStatus pendingEnum,
-            @Param("accountEnum") AccountStatus accountEnum,
+            @Param("pendingSellerStatus") SellerStatus pendingSellerStatus,
+            @Param("targetAccountStatus") AccountStatus targetAccountStatus,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime,
             Pageable pageable);
+
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role.name = :roleName AND u.createdAt BETWEEN :start AND :end")
+    long countByRoleNameAndCreatedAtBetween(@Param("roleName") RoleName roleName, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.accountStatus = :status AND u.createdAt BETWEEN :start AND :end")
+    long countByAccountStatusAndCreatedAtBetween(@Param("status") AccountStatus status, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role.name = :roleName AND u.sellerStatus = :sellerStatus AND u.createdAt BETWEEN :start AND :end")
+    long countByRoleNameAndSellerStatusAndCreatedAtBetween(@Param("roleName") RoleName roleName, @Param("sellerStatus") SellerStatus sellerStatus, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

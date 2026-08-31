@@ -13,6 +13,7 @@ public interface AdminDashboardService {
             String search,
             RoleName role,
             String status,
+            LocalDate startDate, LocalDate endDate,
             int page,
             int size);
 
@@ -39,4 +40,6 @@ public interface AdminDashboardService {
     byte[] exportPropertiesToExcel();
 
     byte[] exportUsersToExcel();
+
+    AdminUserStatsResponse getUserStats(LocalDate startDate, LocalDate endDate);
 }

@@ -23,10 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.util.List;
 
 @Service
@@ -295,7 +292,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminUserListItemResponse> getUsers(String search, RoleName role, String status, int page, int size) {
+    public Page<AdminUserListItemResponse> getUsers(String search, RoleName role, String status, LocalDate startDate, LocalDate endDate, int page, int size) {
         if (page < 1) throw new IllegalArgumentException("page must be at least 1.");
 
         String safeSearch = (search == null) ? "" : search.trim();
@@ -317,10 +314,13 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             }
         }
 
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<User> usersPage = userRepository.findUsersWithAllFilters(
-                safeSearch, role, statusType, pendingSellerStatus, targetAccountStatus, pageable);
+                safeSearch, role, statusType, pendingSellerStatus, targetAccountStatus, startDateTime, endDateTime, pageable);
 
         return usersPage.map(user -> AdminUserListItemResponse.builder()
                 .id(user.getId())
@@ -331,7 +331,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .status(
                         (user.getSellerStatus() != null && user.getSellerStatus().name().equals("PENDING"))
                                 ? "PENDING"
-                                : user.getAccountStatus().name()
+                                : (user.getAccountStatus() != null ? user.getAccountStatus().name() : null)
                 )
                 .joinedDate(user.getCreatedAt())
                 .build());
@@ -455,5 +455,33 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to export users to Excel file", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminUserStatsResponse getUserStats(LocalDate startDate, LocalDate endDate) {
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDate start = startDate != null ? startDate : LocalDate.of(2000, 1, 1);
+
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(LocalTime.MAX);
+
+        long totalUsers = userRepository.countByCreatedAtBetween(startDateTime, endDateTime);
+
+        long totalOwners = userRepository.countByRoleNameAndCreatedAtBetween(RoleName.SELLER, startDateTime, endDateTime);
+
+        long totalAgents = 0;
+
+        long activeThisMonth = userRepository.countByAccountStatusAndCreatedAtBetween(AccountStatus.ACTIVE, startDateTime, endDateTime);
+
+        long ownersPending = userRepository.countByRoleNameAndSellerStatusAndCreatedAtBetween(RoleName.SELLER, SellerStatus.PENDING, startDateTime, endDateTime);
+
+        return AdminUserStatsResponse.builder()
+                .totalUsers(totalUsers)
+                .totalOwners(totalOwners)
+                .totalAgents(totalAgents)
+                .activeThisMonth(activeThisMonth)
+                .ownersPendingApproval(ownersPending)
+                .build();
     }
 }
