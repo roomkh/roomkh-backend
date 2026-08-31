@@ -37,4 +37,6 @@ public interface AdminDashboardService {
     void softDeleteProperty(Long id);
 
     byte[] exportPropertiesToExcel();
+
+    byte[] exportUsersToExcel();
 }

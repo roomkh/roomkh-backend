@@ -28,6 +28,26 @@ public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
 
+
+    @GetMapping("/dashboard/users/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Export users to Excel",
+            description = "Downloads a comprehensive Excel report of all users.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<byte[]> exportUsersToExcel() {
+        byte[] excelData = adminDashboardService.exportUsersToExcel();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"users_export.xlsx\"");
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(excelData);
+    }
+
     @GetMapping("/properties/export")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

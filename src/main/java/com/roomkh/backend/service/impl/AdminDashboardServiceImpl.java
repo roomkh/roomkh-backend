@@ -416,4 +416,44 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             throw new RuntimeException("Failed to export properties to Excel file", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportUsersToExcel() {
+        List<User> users = userRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("Users");
+
+            // Header Row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"User ID", "Name", "Email", "Phone", "Role", "Status", "Joined Date"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // Data Rows
+            int rowIdx = 1;
+            for (User user : users) {
+                Row row = sheet.createRow(rowIdx++);
+
+                row.createCell(0).setCellValue("USR-" + user.getId());
+                row.createCell(1).setCellValue(user.getFullName() != null ? user.getFullName() : "N/A");
+                row.createCell(2).setCellValue(user.getEmail() != null ? user.getEmail() : "N/A");
+                row.createCell(3).setCellValue(user.getPhoneNumber() != null ? user.getPhoneNumber() : "N/A");
+                String roleName = user.getRole() != null ? String.valueOf(user.getRole().getName()) : "N/A";
+                row.createCell(4).setCellValue(roleName);
+                row.createCell(5).setCellValue(user.getAccountStatus() != null ? user.getAccountStatus().name() : "N/A");
+                row.createCell(6).setCellValue(user.getCreatedAt() != null ? user.getCreatedAt().toString() : "N/A");
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export users to Excel file", e);
+        }
+    }
 }
