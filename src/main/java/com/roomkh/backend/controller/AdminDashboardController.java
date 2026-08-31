@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,25 @@ import java.time.LocalDate;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @GetMapping("/properties/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Export properties to Excel",
+            description = "Downloads a comprehensive Excel report of all properties.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<byte[]> exportPropertiesToExcel() {
+        byte[] excelData = adminDashboardService.exportPropertiesToExcel();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"properties_export.xlsx\"");
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(excelData);
+    }
 
     @DeleteMapping("/properties/{id}")
     @PreAuthorize("hasRole('ADMIN')")
