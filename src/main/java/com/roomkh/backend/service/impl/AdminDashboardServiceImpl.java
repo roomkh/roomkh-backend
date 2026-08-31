@@ -9,6 +9,10 @@ import com.roomkh.backend.repository.RoleRepository;
 import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,10 +21,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -359,5 +366,54 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         property.setStatus(PropertyStatus.BANNED);
         property.setUpdatedAt(OffsetDateTime.now());
         propertyRepository.save(property);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportPropertiesToExcel() {
+        List<Property> properties = propertyRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("Properties");
+
+            // Header Row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"ID", "Property Code", "Title", "Owner Name", "Type", "Location", "Price", "Status", "Listed Date"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // Data Rows
+            int rowIdx = 1;
+            for (Property property : properties) {
+                Row row = sheet.createRow(rowIdx++);
+
+                row.createCell(0).setCellValue(property.getId());
+                row.createCell(1).setCellValue("#LST-" + property.getId());
+                row.createCell(2).setCellValue(property.getTitle());
+
+                String ownerName = property.getSeller() != null ? property.getSeller().getFullName() : "N/A";
+                row.createCell(3).setCellValue(ownerName);
+
+                row.createCell(4).setCellValue(property.getPropertyType() != null ? property.getPropertyType().name() : "N/A");
+
+                String district = property.getDistrict() != null ? property.getDistrict() : "";
+                String province = property.getProvince() != null ? property.getProvince() : "";
+                String location = district + (district.isEmpty() || province.isEmpty() ? "" : ", ") + province;
+                row.createCell(5).setCellValue(location.isEmpty() ? "Unknown" : location);
+
+                row.createCell(6).setCellValue(property.getPrice() != null ? property.getPrice().doubleValue() : 0.0);
+                row.createCell(7).setCellValue(property.getStatus() != null ? property.getStatus().name() : "N/A");
+                row.createCell(8).setCellValue(property.getListedAt() != null ? property.getListedAt().toString() : "N/A");
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export properties to Excel file", e);
+        }
     }
 }
