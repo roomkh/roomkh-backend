@@ -33,4 +33,6 @@ public interface AdminDashboardService {
     AdminPropertyStatsResponse getPropertyStats(LocalDate startDate, LocalDate endDate);
 
     AdminPropertyDetailResponse getPropertyDetail(Long id);
+
+    void softDeleteProperty(Long id);
 }

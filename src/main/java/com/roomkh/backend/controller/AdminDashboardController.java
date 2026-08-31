@@ -27,6 +27,21 @@ public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
 
+    @DeleteMapping("/properties/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Soft delete (Ban) property",
+            description = "Soft deletes a property by changing its status to BANNED.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Void>> softDeleteProperty(
+            @Parameter(description = "Property ID")
+            @PathVariable Long id) {
+
+        adminDashboardService.softDeleteProperty(id);
+        return ResponseEntity.ok(ApiResponse.success("Property has been banned/deleted successfully.", null));
+    }
+
     @GetMapping("/properties/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

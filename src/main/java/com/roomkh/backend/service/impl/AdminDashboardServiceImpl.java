@@ -349,4 +349,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .monthlyRevenue(mockedMonthlyRevenue)
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void softDeleteProperty(Long id) {
+        Property property = propertyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + id));
+
+        property.setStatus(PropertyStatus.BANNED);
+        property.setUpdatedAt(OffsetDateTime.now());
+        propertyRepository.save(property);
+    }
 }
