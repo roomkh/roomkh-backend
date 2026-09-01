@@ -3,6 +3,8 @@ package com.roomkh.backend.controller;
 import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.dto.comon.ApiResponse;
 import com.roomkh.backend.entity.PlanType;
+import com.roomkh.backend.entity.PropertyStatus;
+import com.roomkh.backend.entity.PropertyType;
 import com.roomkh.backend.entity.RoleName;
 import com.roomkh.backend.service.AdminDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,11 +17,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.security.Principal;
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
@@ -28,6 +34,30 @@ import java.time.LocalDate;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get admin profile",
+            description = "Retrieves the logged-in admin's profile information.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<AdminProfileResponse>> getAdminProfile(Principal principal) {
+        AdminProfileResponse profile = adminDashboardService.getAdminProfile(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", profile));
+    }
+
+    @GetMapping("/notifications/unread")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get unread notifications",
+            description = "Retrieves the list of unread notifications for the logged-in admin.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<List<NotificationItemResponse>>> getUnreadNotifications(java.security.Principal principal) {
+        List<NotificationItemResponse> notifications = adminDashboardService.getUnreadNotifications(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success("Unread notifications retrieved successfully", notifications));
+    }
 
     @GetMapping(value = "/owners/export", produces = "text/csv")
     @PreAuthorize("hasRole('ADMIN')")
@@ -130,15 +160,30 @@ public class AdminDashboardController {
     }
 
 
-    @GetMapping("/dashboard/users/export")
+    @GetMapping("/users/export")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Export users to Excel",
-            description = "Downloads a comprehensive Excel report of all users.",
+            description = "Downloads a comprehensive Excel report of filtered users.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<byte[]> exportUsersToExcel() {
-        byte[] excelData = adminDashboardService.exportUsersToExcel();
+    public ResponseEntity<byte[]> exportUsersToExcel(
+            @Parameter(description = "Search by name, email, or phone")
+            @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter by role")
+            @RequestParam(required = false) RoleName role,
+
+            @Parameter(description = "Filter by status (e.g., ACTIVE, INACTIVE, PENDING)")
+            @RequestParam(required = false) String status,
+
+            @Parameter(description = "Filter by start date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "Filter by end date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws IOException {
+
+        byte[] excelData = adminDashboardService.exportUsersToExcel(search, role, status, startDate, endDate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"users_export.xlsx\"");
@@ -149,18 +194,36 @@ public class AdminDashboardController {
                 .body(excelData);
     }
 
-    @GetMapping("/properties/export")
+    @GetMapping(value = "/properties/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Export properties to Excel",
-            description = "Downloads a comprehensive Excel report of all properties.",
-            security = @SecurityRequirement(name = "bearerAuth")
+            description = "Exports a filtered list of properties as a downloadable Excel file.",
+            security = @SecurityRequirement(name = "bearerAuth") // នេះហើយជាអាគន្លឹះដែលធ្វើអោយ Swagger ព្រមបោះ Token ទៅ
     )
-    public ResponseEntity<byte[]> exportPropertiesToExcel() {
-        byte[] excelData = adminDashboardService.exportPropertiesToExcel();
+    public ResponseEntity<byte[]> exportPropertiesToExcel(
+            @Parameter(description = "Search by title, owner name, or location")
+            @RequestParam(required = false) String search,
+
+            @Parameter(description = "Filter by status")
+            @RequestParam(required = false) PropertyStatus status,
+
+            @Parameter(description = "Filter by type")
+            @RequestParam(required = false) PropertyType type,
+
+            @Parameter(description = "Filter by city/province")
+            @RequestParam(required = false) String city,
+
+            @Parameter(description = "Filter by start date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @Parameter(description = "Filter by end date (YYYY-MM-DD)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws IOException {
+
+        byte[] excelData = adminDashboardService.exportPropertiesToExcel(search, status, type, city, startDate, endDate);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"properties_export.xlsx\"");
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"properties_export.xlsx\"");
         headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
         return ResponseEntity.ok()

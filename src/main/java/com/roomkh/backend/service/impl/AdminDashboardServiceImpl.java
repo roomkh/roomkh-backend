@@ -4,6 +4,7 @@ import com.roomkh.backend.dto.admin.*;
 import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
+import com.roomkh.backend.repository.NotificationRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.RoleRepository;
 import com.roomkh.backend.repository.UserRepository;
@@ -25,15 +26,22 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AdminDashboardServiceImpl implements AdminDashboardService {
 
+
+    private static final java.util.regex.Pattern EMAIL_PATTERN = java.util.regex.Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+    private static final java.util.regex.Pattern CAMBODIA_E164_PHONE_PATTERN = java.util.regex.Pattern.compile("^\\+855[1-9]\\d{7,8}$");
+    private static final java.util.regex.Pattern CAMBODIA_LOCAL_PHONE_PATTERN = java.util.regex.Pattern.compile("^0[1-9]\\d{7,8}$");
+
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+    private final NotificationRepository notificationRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -222,36 +230,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         });
     }
 
-    @Override
-    @Transactional
-    public void createUser(AdminCreateUserRequest request) {
-        if (userRepository.findByEmailIgnoreCase(request.getEmail()).isPresent()) {
-            throw new BadRequestException("Email already exists.");
-        }
 
-        RoleName roleName;
-        try {
-            roleName = RoleName.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid role. Allowed values: USER, SELLER, ADMIN");
-        }
-
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName));
-
-        User newUser = User.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .phoneNumber(request.getPhoneNumber())
-                .role(role)
-                .authProvider(AuthProvider.LOCAL)
-                .accountStatus(AccountStatus.ACTIVE)
-                .sellerStatus(roleName == RoleName.SELLER ? SellerStatus.APPROVED : null)
-                .build();
-
-        userRepository.save(newUser);
-    }
 
     @Override
     @Transactional
@@ -370,8 +349,21 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportPropertiesToExcel() {
-        List<Property> properties = propertyRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    public byte[] exportPropertiesToExcel(String search, PropertyStatus status, PropertyType type, String city, LocalDate startDate, LocalDate endDate) throws IOException {
+        String safeSearch = (search == null) ? "" : search.trim();
+        String safeCity = (city == null) ? "" : city.trim();
+
+        OffsetDateTime startOffsetDateTime = (startDate != null)
+                ? startDate.atStartOfDay().atOffset(ZoneOffset.UTC)
+                : OffsetDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
+        OffsetDateTime endOffsetDateTime = (endDate != null)
+                ? endDate.atTime(LocalTime.MAX).atOffset(ZoneOffset.UTC)
+                : OffsetDateTime.now();
+
+        Page<Property> propertiesPage = propertyRepository.findPropertiesWithFilters(
+                safeSearch, status, type, safeCity, startOffsetDateTime, endOffsetDateTime, Pageable.unpaged());
+        List<Property> properties = propertiesPage.getContent();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -419,8 +411,32 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportUsersToExcel() {
-        List<User> users = userRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    public byte[] exportUsersToExcel(String search, RoleName role, String status, LocalDate startDate, LocalDate endDate) {
+        String safeSearch = (search == null) ? "" : search.trim();
+
+        String statusType = "ALL";
+        AccountStatus targetAccountStatus = null;
+        SellerStatus pendingSellerStatus = SellerStatus.PENDING;
+
+        if (status != null && !status.trim().isEmpty()) {
+            if (status.equalsIgnoreCase("PENDING")) {
+                statusType = "PENDING";
+            } else {
+                statusType = "ACCOUNT";
+                try {
+                    targetAccountStatus = com.roomkh.backend.entity.AccountStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    statusType = "ALL";
+                }
+            }
+        }
+
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+
+        Page<User> usersPage = userRepository.findUsersWithAllFilters(
+                safeSearch, role, statusType, pendingSellerStatus, targetAccountStatus, startDateTime, endDateTime, Pageable.unpaged());
+        List<User> users = usersPage.getContent();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -619,5 +635,122 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
                     id, name, email, phone, planName, propertiesCount, joinDate, userStatus));
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminProfileResponse getAdminProfile(String identifier) {
+        User admin = findUserByIdentifier(identifier);
+
+        return AdminProfileResponse.builder()
+                .id(admin.getId())
+                .fullName(admin.getFullName())
+                .email(admin.getEmail())
+                .phoneNumber(admin.getPhoneNumber())
+                .avatarUrl(admin.getAvatarUrl())
+                .roleName(admin.getRole() != null ? admin.getRole().getName().name() : null)
+                .accountStatus(admin.getAccountStatus() != null ? admin.getAccountStatus().name() : null)
+                .authProvider(admin.getAuthProvider() != null ? admin.getAuthProvider().name() : null)
+                .joinedDate(admin.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotificationItemResponse> getUnreadNotifications(String identifier) {
+        User admin = findUserByIdentifier(identifier);
+
+        List<Notification> unreadNotifications = notificationRepository.findByUserAndIsReadFalseOrderByCreatedAtDesc(admin);
+
+        return unreadNotifications.stream()
+                .map(notification -> NotificationItemResponse.builder()
+                        .id(notification.getId())
+                        .title(notification.getTitle())
+                        .message(notification.getMessage())
+                        .createdAt(notification.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private User findUserByIdentifier(String identifier) {
+        try {
+            Long userId = Long.parseLong(identifier);
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Admin not found with ID: " + userId));
+        } catch (NumberFormatException e) {
+            return userRepository.findByEmailIgnoreCase(identifier)
+                    .orElseThrow(() -> new RuntimeException("Admin not found with email: " + identifier));
+        }
+    }
+
+    @Override
+    @Transactional
+    public void createUser(AdminCreateUserRequest request) {
+        String rawIdentifier = request.getIdentifier();
+        String email = null;
+        String phoneNumber = null;
+
+        if (looksLikeEmail(rawIdentifier)) {
+            email = normalizeEmail(rawIdentifier);
+            if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
+                throw new BadRequestException("Email already exists.");
+            }
+        } else {
+            phoneNumber = normalizeCambodiaPhone(rawIdentifier);
+            if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
+                throw new BadRequestException("Phone number already exists.");
+            }
+        }
+
+        RoleName roleName;
+        try {
+            roleName = RoleName.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role. Allowed values: USER, SELLER, ADMIN");
+        }
+
+        Role role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName));
+
+        User newUser = User.builder()
+                .fullName(request.getFullName())
+                .email(email)
+                .phoneNumber(phoneNumber)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .authProvider(AuthProvider.LOCAL)
+                .accountStatus(AccountStatus.ACTIVE)
+                .sellerStatus(roleName == RoleName.SELLER ? SellerStatus.APPROVED : null)
+                .build();
+
+        userRepository.save(newUser);
+    }
+
+    // --- Helper Methods ---
+
+    private boolean looksLikeEmail(String identifier) {
+        return identifier != null && identifier.contains("@");
+    }
+
+    private String normalizeEmail(String rawEmail) {
+        String trimmed = rawEmail.trim().toLowerCase();
+        if (!EMAIL_PATTERN.matcher(trimmed).matches()) {
+            throw new BadRequestException("Please provide a valid email address.");
+        }
+        return trimmed;
+    }
+
+    private String normalizeCambodiaPhone(String rawPhone) {
+        String cleaned = rawPhone.trim().replaceAll("[\\s\\-().]", "");
+
+        if (CAMBODIA_E164_PHONE_PATTERN.matcher(cleaned).matches()) {
+            return cleaned;
+        }
+
+        if (CAMBODIA_LOCAL_PHONE_PATTERN.matcher(cleaned).matches()) {
+            return "+855" + cleaned.substring(1);
+        }
+
+        throw new BadRequestException("Please provide a valid Cambodia phone number.");
     }
 }
