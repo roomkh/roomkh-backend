@@ -34,6 +34,21 @@ public class AuthController {
     private final RefreshTokenCookieUtil cookieUtil;
     private final ClientIpResolver clientIpResolver;
 
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request OTP for password reset", description = "Sends a 6-digit OTP to the user's email or phone number.")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody com.roomkh.backend.dto.auth.ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+
+        return ResponseEntity.ok(ApiResponse.success("If the account exists, an OTP has been sent.", null));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password using OTP", description = "Verifies the OTP and updates the user's password.")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody com.roomkh.backend.dto.auth.ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Password has been reset successfully.", null));
+    }
+
     @PostMapping("/register")
     @Operation(summary = "Register a new user")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request,
