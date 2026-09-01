@@ -2,28 +2,17 @@ package com.roomkh.backend.service.impl;
 
 import com.roomkh.backend.config.JwtProperties;
 import com.roomkh.backend.config.RefreshTokenProperties;
-import com.roomkh.backend.dto.auth.AuthResponse;
-import com.roomkh.backend.dto.auth.LoginRequest;
-import com.roomkh.backend.dto.auth.RefreshTokenResponse;
-import com.roomkh.backend.dto.auth.RegisterRequest;
-import com.roomkh.backend.entity.AccountStatus;
-import com.roomkh.backend.entity.AuthProvider;
-import com.roomkh.backend.entity.RefreshToken;
-import com.roomkh.backend.entity.Role;
-import com.roomkh.backend.entity.RoleName;
-import com.roomkh.backend.entity.User;
+import com.roomkh.backend.dto.auth.*;
+import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.DuplicateResourceException;
 import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.mapper.UserMapper;
+import com.roomkh.backend.repository.PasswordResetOtpRepository;
 import com.roomkh.backend.repository.RoleRepository;
 import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.security.JwtService;
-import com.roomkh.backend.service.AuthService;
-import com.roomkh.backend.service.AuthenticationResult;
-import com.roomkh.backend.service.LoginSecurityService;
-import com.roomkh.backend.service.RefreshResult;
-import com.roomkh.backend.service.RefreshTokenService;
+import com.roomkh.backend.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -52,6 +41,66 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenProperties refreshTokenProperties;
     private final LoginSecurityService loginSecurityService;
+    private final PasswordResetOtpRepository passwordResetOtpRepository;
+    private final EmailService emailService;
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        User user = resolveUserForLogin(request.getIdentifier());
+
+        if (user.getRole().getName() == RoleName.ADMIN) {
+            throw new AccessDeniedException("Administrators cannot reset passwords via this portal. Please contact System Support.");
+        }
+
+        String otpCode = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+
+        PasswordResetOtp otp = PasswordResetOtp.builder()
+                .user(user)
+                .otpCode(otpCode)
+                .expiresAt(java.time.LocalDateTime.now().plusMinutes(15))
+                .isUsed(false)
+                .build();
+
+        passwordResetOtpRepository.save(otp);
+
+        if (looksLikeEmail(request.getIdentifier())) {
+            emailService.sendOtpEmail(user.getEmail(), otpCode);
+        } else {
+            System.out.println("========== MOCK SMS ==========");
+            System.out.println("To Phone: " + user.getPhoneNumber());
+            System.out.println("OTP Code: " + otpCode);
+            System.out.println("==============================");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        User user = resolveUserForLogin(request.getIdentifier());
+
+        if (user.getRole().getName() == RoleName.ADMIN) {
+            throw new AccessDeniedException("Administrators cannot reset passwords via this portal.");
+        }
+
+        PasswordResetOtp otpRecord = passwordResetOtpRepository
+                .findTopByUserAndIsUsedFalseOrderByExpiresAtDesc(user)
+                .orElseThrow(() -> new BadRequestException("No active OTP found. Please request a new one."));
+
+        if (otpRecord.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            throw new BadRequestException("OTP has expired. Please request a new one.");
+        }
+
+        if (!otpRecord.getOtpCode().equals(request.getOtp())) {
+            throw new BadRequestException("Invalid OTP code.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otpRecord.setUsed(true);
+        passwordResetOtpRepository.save(otpRecord);
+    }
 
     @Override
     @Transactional

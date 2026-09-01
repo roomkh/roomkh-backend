@@ -40,6 +40,8 @@ public class SecurityConfig {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
             "/api/v1/seller-requests",
             "/api/v1/seller-requests/*/activate",
             "/uploads/**",
