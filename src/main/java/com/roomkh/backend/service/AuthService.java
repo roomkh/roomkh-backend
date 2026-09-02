@@ -1,9 +1,6 @@
 package com.roomkh.backend.service;
 
-import com.roomkh.backend.dto.auth.ForgotPasswordRequest;
-import com.roomkh.backend.dto.auth.LoginRequest;
-import com.roomkh.backend.dto.auth.RegisterRequest;
-import com.roomkh.backend.dto.auth.ResetPasswordRequest;
+import com.roomkh.backend.dto.auth.*;
 
 public interface AuthService {
     AuthenticationResult register(RegisterRequest request);
@@ -12,4 +9,6 @@ public interface AuthService {
     void logout(String rawRefreshToken);
     void forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
+
+    AuthenticationResult googleLogin(GoogleLoginRequest request, String clientIp);
 }

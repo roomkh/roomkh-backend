@@ -1,8 +1,13 @@
 package com.roomkh.backend.service.impl;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import com.roomkh.backend.config.JwtProperties;
 import com.roomkh.backend.config.RefreshTokenProperties;
 import com.roomkh.backend.dto.auth.*;
+import com.roomkh.backend.dto.user.UserProfileResponse;
 import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.DuplicateResourceException;
@@ -14,6 +19,7 @@ import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.security.JwtService;
 import com.roomkh.backend.service.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -43,6 +51,68 @@ public class AuthServiceImpl implements AuthService {
     private final LoginSecurityService loginSecurityService;
     private final PasswordResetOtpRepository passwordResetOtpRepository;
     private final EmailService emailService;
+
+    @Value("${roomkh.google.client-id}")
+    private String googleClientId;
+
+    @Override
+    @Transactional
+    public AuthenticationResult googleLogin(GoogleLoginRequest request, String clientIp) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(),
+                    new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(request.getIdToken());
+
+            if (idToken != null) {
+                GoogleIdToken.Payload payload = idToken.getPayload();
+
+                String email = payload.getEmail();
+                String name = (String) payload.get("name");
+                String pictureUrl = (String) payload.get("picture");
+
+                User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
+
+                if (user == null) {
+                    user = new User();
+                    user.setEmail(email);
+                    user.setFullName(name);
+                    user.setAvatarUrl(pictureUrl);
+                    user.setAuthProvider(AuthProvider.GOOGLE);
+
+                    String randomPassword = UUID.randomUUID().toString();
+                    user.setPassword(passwordEncoder.encode(randomPassword));
+                    user.setProviderId(payload.getSubject());
+                    user.setAccountStatus(AccountStatus.ACTIVE);
+
+                    Role userRole = roleRepository.findByName(RoleName.USER)
+                            .orElseThrow(() -> new RuntimeException("Default role not found."));
+                    user.setRole(userRole);
+
+                    user = userRepository.save(user);
+                }
+
+                String accessToken = jwtService.generateToken(user.getId(), user.getRole().getName());
+                String rawRefreshToken = refreshTokenService.createRefreshToken(user, true);
+
+                AuthResponse authResponse = AuthResponse.builder()
+                        .accessToken(accessToken)
+                        .user(mapToAuthUserResponse(user))
+                        .build();
+
+                return new AuthenticationResult(authResponse, rawRefreshToken, true, 604800L);
+
+            } else {
+                throw new BadRequestException("Invalid Google ID token.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BadRequestException("Failed to verify Google token.");
+        }
+    }
 
     @Override
     @Transactional
@@ -207,6 +277,18 @@ public class AuthServiceImpl implements AuthService {
         if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
             refreshTokenService.revokeByRawToken(rawRefreshToken);
         }
+    }
+
+    private UserResponse mapToAuthUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole() != null ? user.getRole().getName() : null)
+                .sellerStatus(user.getSellerStatus())
+                .authProvider(user.getAuthProvider())
+                .build();
     }
 
     private AuthenticationResult buildAuthenticationResult(User user, boolean rememberMe) {
