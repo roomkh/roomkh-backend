@@ -34,6 +34,23 @@ public class AuthController {
     private final RefreshTokenCookieUtil cookieUtil;
     private final ClientIpResolver clientIpResolver;
 
+    @PostMapping("/google")
+    @Operation(summary = "Login or Register with Google")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(
+            @Valid @RequestBody com.roomkh.backend.dto.auth.GoogleLoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+
+        AuthenticationResult result = authService.googleLogin(request, clientIp);
+
+        // Add Refresh Token into Cookie
+        cookieUtil.addRefreshTokenCookie(response, result.getRawRefreshToken(), true, result.getRefreshTokenMaxAgeSeconds());
+
+        return ResponseEntity.ok(ApiResponse.success("Google login successful.", result.getAuthResponse()));
+    }
+
     @PostMapping("/forgot-password")
     @Operation(summary = "Request OTP for password reset", description = "Sends a 6-digit OTP to the user's email or phone number.")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody com.roomkh.backend.dto.auth.ForgotPasswordRequest request) {
