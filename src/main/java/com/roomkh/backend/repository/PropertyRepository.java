@@ -18,7 +18,7 @@ import java.util.Optional;
 
 public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSpecificationExecutor<Property> {
     boolean existsBySlug(String slug);
-    Optional<Property> findBySlug(String slug);
+    Page<Property> findByStatusNot(PropertyStatus status, Pageable pageable);
     Optional<Property> findByIdAndSellerId(Long propertyId, Long sellerId);
 
     Page<Property> findBySeller_Id(Long sellerId, Pageable pageable);

@@ -91,10 +91,14 @@ public class AdminPropertyServiceImpl implements AdminPropertyService {
         Pageable pageable = PageRequest.of(page - 1, size, sort);
         PropertyStatus parsedStatus = parseStatus(status);
 
+        if (parsedStatus == PropertyStatus.DRAFT) {
+            throw new BadRequestException("Admins are not allowed to view DRAFT properties.");
+        }
+
         // 1. Fetch properties
         Page<Property> propertyPage = (parsedStatus != null)
                 ? propertyRepository.findByStatus(parsedStatus, pageable)
-                : propertyRepository.findAll(pageable);
+                : propertyRepository.findByStatusNot(PropertyStatus.DRAFT, pageable);
 
         List<Long> propertyIds = propertyPage.getContent().stream()
                 .map(Property::getId)
