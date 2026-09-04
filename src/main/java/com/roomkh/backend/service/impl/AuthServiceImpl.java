@@ -7,7 +7,6 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.roomkh.backend.config.JwtProperties;
 import com.roomkh.backend.config.RefreshTokenProperties;
 import com.roomkh.backend.dto.auth.*;
-import com.roomkh.backend.dto.user.UserProfileResponse;
 import com.roomkh.backend.entity.*;
 import com.roomkh.backend.exception.BadRequestException;
 import com.roomkh.backend.exception.DuplicateResourceException;
