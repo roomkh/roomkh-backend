@@ -7,6 +7,7 @@ import com.roomkh.backend.dto.seller.SellerRequestSummaryResponse;
 import com.roomkh.backend.entity.SellerRequestStatus;
 import com.roomkh.backend.service.SellerRequestService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,7 @@ public class AdminSellerRequestController {
 
     @GetMapping
     @Operation(summary = "List seller requests with optional filters")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<List<SellerRequestSummaryResponse>>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -50,6 +52,7 @@ public class AdminSellerRequestController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get seller request detail")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<SellerRequestResponse>> getById(@PathVariable Long id) {
         SellerRequestResponse response = sellerRequestService.getById(id);
         return ResponseEntity.ok(ApiResponse.success("Seller request retrieved successfully.", response));

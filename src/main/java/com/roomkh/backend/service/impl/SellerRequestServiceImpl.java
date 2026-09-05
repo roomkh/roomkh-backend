@@ -86,6 +86,12 @@ public class SellerRequestServiceImpl implements SellerRequestService {
 
     @Override
     public Page<SellerRequestSummaryResponse> list(SellerRequestStatus status, String keyword, Pageable pageable) {
+
+        if (status == null && (keyword == null || keyword.isBlank())) {
+            return sellerRequestRepository.findAll(pageable)
+                    .map(sellerRequestMapper::toSummaryResponse);
+        }
+
         Specification<SellerRequest> spec = Specification.where((Specification<SellerRequest>) null);
 
         if (status != null) {
@@ -102,7 +108,8 @@ public class SellerRequestServiceImpl implements SellerRequestService {
             ));
         }
 
-        return sellerRequestRepository.findAll(spec, pageable).map(sellerRequestMapper::toSummaryResponse);
+        return sellerRequestRepository.findAll(spec, pageable)
+                .map(sellerRequestMapper::toSummaryResponse);
     }
 
     @Override
