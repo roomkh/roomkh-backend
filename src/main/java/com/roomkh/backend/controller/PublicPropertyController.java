@@ -69,6 +69,23 @@ public class PublicPropertyController {
         return ResponseEntity.ok(com.roomkh.backend.dto.comon.ApiResponse.success("Similar properties retrieved successfully.", response));
     }
 
+    @GetMapping("/{propertyId}/owner-properties")
+    @Operation(
+            summary = "Get other properties from the same owner",
+            description = "Fetches up to 6 ACTIVE properties listed by the owner of the requested property, excluding the requested property itself."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Owner properties retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Reference property not found or unavailable")
+    })
+    public ResponseEntity<ApiResponse<List<PublicPropertyListItemResponse>>> getOwnerProperties(
+            @Parameter(description = "Reference Property ID")
+            @PathVariable Long propertyId) {
+
+        List<PublicPropertyListItemResponse> response = publicPropertyService.getOwnerProperties(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Owner properties retrieved successfully.", response));
+    }
+
     @GetMapping("/{propertyId}")
     @Operation(
             summary = "Get public property details",

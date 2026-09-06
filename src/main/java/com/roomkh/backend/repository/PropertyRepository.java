@@ -18,6 +18,7 @@ import java.util.Optional;
 
 public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSpecificationExecutor<Property> {
     boolean existsBySlug(String slug);
+    Optional<Property> findByUuidAndStatus(java.util.UUID uuid, PropertyStatus status);
     Page<Property> findByStatusNot(PropertyStatus status, Pageable pageable);
     Optional<Property> findByIdAndSellerId(Long propertyId, Long sellerId);
 
@@ -52,6 +53,12 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
             @Param("propertyId") Long propertyId,
             @Param("type") PropertyType type,
             @Param("province") String province,
+            Pageable pageable);
+
+    @Query("SELECT p FROM Property p WHERE p.status = 'ACTIVE' AND p.seller.id = :sellerId AND p.id != :propertyId ORDER BY p.createdAt DESC")
+    List<Property> findOwnerProperties(
+            @Param("sellerId") Long sellerId,
+            @Param("propertyId") Long propertyId,
             Pageable pageable);
 
     @Query("SELECT p.province, COUNT(p.id) FROM Property p WHERE p.status = com.roomkh.backend.entity.PropertyStatus.ACTIVE GROUP BY p.province ORDER BY COUNT(p.id) DESC")

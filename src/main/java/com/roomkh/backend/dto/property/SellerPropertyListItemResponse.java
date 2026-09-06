@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class SellerPropertyListItemResponse {
     private Long id;
+    private java.util.UUID uuid;
     private String title;
     private String slug;
     private PropertyType propertyType;

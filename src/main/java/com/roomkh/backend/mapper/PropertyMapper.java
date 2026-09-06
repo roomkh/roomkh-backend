@@ -43,6 +43,7 @@ public class PropertyMapper {
 
         return SellerPropertyDetailResponse.builder()
                 .id(property.getId())
+                .uuid(property.getUuid())
                 .title(property.getTitle())
                 .status(property.getStatus())
                 .purpose(property.getPurpose())
@@ -83,6 +84,7 @@ public class PropertyMapper {
 
         return SellerPropertyResponse.builder()
                 .id(property.getId())
+                .uuid(property.getUuid())
                 .title(property.getTitle())
                 .slug(property.getSlug())
                 .propertyType(property.getPropertyType())
@@ -116,6 +118,7 @@ public class PropertyMapper {
     ) {
         return SellerPropertyListItemResponse.builder()
                 .id(property.getId())
+                .uuid(property.getUuid())
                 .title(property.getTitle())
                 .slug(property.getSlug())
                 .propertyType(property.getPropertyType())

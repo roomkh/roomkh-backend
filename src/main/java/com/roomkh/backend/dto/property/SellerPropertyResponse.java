@@ -19,6 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SellerPropertyResponse {
     private Long id;
+    private java.util.UUID uuid;
     private String title;
     private String slug;
     private PropertyType propertyType;

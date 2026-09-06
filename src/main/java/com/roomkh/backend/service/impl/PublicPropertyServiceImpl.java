@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 public class PublicPropertyServiceImpl implements PublicPropertyService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    private static final int OWNER_PROPERTIES_LIMIT = 6;
 
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
@@ -49,20 +50,43 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
                 limit
         );
 
-        if (similarProperties.isEmpty()) {
+        // 3. Map to DTO with cover images
+        return toListItems(similarProperties);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PublicPropertyListItemResponse> getOwnerProperties(Long propertyId) {
+        // 1. Fetch reference property to resolve its owner
+        Property referenceProperty = propertyRepository.findByIdAndStatus(propertyId, PropertyStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Reference property not found or unavailable."));
+
+        // 2. Query the owner's other active listings
+        Pageable limit = PageRequest.of(0, OWNER_PROPERTIES_LIMIT);
+        List<Property> ownerProperties = propertyRepository.findOwnerProperties(
+                referenceProperty.getSeller().getId(),
+                referenceProperty.getId(),
+                limit
+        );
+
+        // 3. Map to DTO with cover images
+        return toListItems(ownerProperties);
+    }
+
+    /** Maps properties to list items, resolving their cover images in a single bulk query. */
+    private List<PublicPropertyListItemResponse> toListItems(List<Property> properties) {
+        if (properties.isEmpty()) {
             return List.of();
         }
 
-        // 3. Fetch cover images in bulk
-        List<Long> similarPropertyIds = similarProperties.stream().map(Property::getId).toList();
-        Map<Long, String> coverImageUrls = propertyImageRepository.findByProperty_IdInAndCoverTrue(similarPropertyIds).stream()
+        List<Long> propertyIds = properties.stream().map(Property::getId).toList();
+        Map<Long, String> coverImageUrls = propertyImageRepository.findByProperty_IdInAndCoverTrue(propertyIds).stream()
                 .collect(Collectors.toMap(
                         img -> img.getProperty().getId(),
                         PropertyImage::getUrl
                 ));
 
-        // 4. Map to DTO
-        return similarProperties.stream()
+        return properties.stream()
                 .map(property -> PublicPropertyListItemResponse.builder()
                         .id(property.getId())
                         .title(property.getTitle())

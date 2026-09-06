@@ -5,5 +5,6 @@ public enum PropertyType {
     HOME,
     APARTMENT,
     VILLA,
-    LAND
+    LAND,
+    TOURISM
 }

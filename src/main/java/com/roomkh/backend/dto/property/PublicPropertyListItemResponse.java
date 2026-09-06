@@ -19,6 +19,7 @@ import java.time.OffsetDateTime;
 public class PublicPropertyListItemResponse {
 
     private Long id;
+    private java.util.UUID uuid;
     private String title;
     private PropertyPurpose purpose;
     

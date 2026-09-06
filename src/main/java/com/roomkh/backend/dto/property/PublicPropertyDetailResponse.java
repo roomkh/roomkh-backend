@@ -20,6 +20,7 @@ import java.util.List;
 public class PublicPropertyDetailResponse {
 
     private Long id;
+    private java.util.UUID uuid;
     private String title;
     private PropertyPurpose purpose;
     

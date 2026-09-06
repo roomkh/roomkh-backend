@@ -21,6 +21,7 @@ import java.util.List;
 public class SellerPropertyDetailResponse {
 
     private Long id;
+    private java.util.UUID uuid;
     private String title;
     private PropertyStatus status;
     private PropertyPurpose purpose;

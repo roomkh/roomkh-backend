@@ -26,6 +26,9 @@ public class Property {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "uuid", nullable = false, unique = true, updatable = false)
+    private java.util.UUID uuid;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
@@ -142,6 +145,9 @@ public class Property {
 
     @PrePersist
     protected void onCreate() {
+        if (this.uuid == null) {
+            this.uuid = java.util.UUID.randomUUID();
+        }
         OffsetDateTime now = OffsetDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
