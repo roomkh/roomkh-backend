@@ -42,5 +42,13 @@ app:
     rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
 
 property-image-storage:
+  provider: ${PROPERTY_IMAGE_STORAGE_PROVIDER:r2}
   root-path: ${PROPERTY_IMAGE_STORAGE_PATH:uploads}
   public-url-prefix: /uploads
+
+r2:
+  endpoint: ${R2_ENDPOINT:}
+  access-key: ${R2_ACCESS_KEY:}
+  secret-key: ${R2_SECRET_KEY:}
+  bucket-name: ${R2_BUCKET_NAME:}
+  public-url: ${R2_PUBLIC_URL:${STORAGE_R2_URL:}}
