@@ -111,7 +111,8 @@ pipeline {
                     
                     withCredentials([
                         sshUserPrivateKey(credentialsId: 'app-server-ssh', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER'),
-                        string(credentialsId: 'techey-vault-password', variable: 'ANSIBLE_VAULT_PASSWORD')
+                        string(credentialsId: 'techey-vault-password', variable: 'ANSIBLE_VAULT_PASSWORD'),
+                        usernamePassword(credentialsId: 'techey-ghcr', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')
                     ]) {
                         sh '''
                             set -e
@@ -151,7 +152,7 @@ pipeline {
                             SERVER_IP=$(awk '/roomkh_prod:/ {getline; print}' inventories/deploy/hosts.yml | grep -oP 'ansible_host:\\s*\\K[\\d.]+')
                             if [ -n "${SERVER_IP}" ]; then
                                 echo "Adding ${SERVER_IP} to known_hosts..."
-                                ssh-keyscan -H "${SERVER_IP}" >> ~/.ssh/known_hosts
+                                ssh-keyscan -H "${SERVER_IP}" >> ~/.ssh/known_hosts 2>/dev/null || true
                             fi
                             
                             # Run Ansible playbook targeting the roomkh server and setting app_name
@@ -163,6 +164,8 @@ pipeline {
                                 --vault-password-file /tmp/jenkins-ansible-keys/vault_password \
                                 -e "app_version=sha-${GIT_COMMIT_SHORT}" \
                                 -e "app_name=roomkh" \
+                                -e "ghcr_token=${GHCR_TOKEN}" \
+                                -e "ghcr_username=${GHCR_USER}" \
                                 --tags app
                         '''
                     }
