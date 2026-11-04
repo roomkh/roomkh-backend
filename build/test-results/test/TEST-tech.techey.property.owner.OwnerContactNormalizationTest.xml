@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tech.techey.property.owner.OwnerContactNormalizationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-25T09:27:40.362Z" hostname="ROUNGs-MacBook-Pro.local" time="0.039">
+  <properties/>
+  <testcase name="telegramAcceptsUsernamesLinksAndPhones()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.027"/>
+  <testcase name="phoneMustLookLikeAPhoneNumber()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.003"/>
+  <testcase name="blankValuesClearTheChannel()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.001"/>
+  <testcase name="facebookAcceptsPageNamesAndFacebookUrls()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.001"/>
+  <testcase name="facebookRejectsOtherHostsAndEmptyPaths()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.001"/>
+  <testcase name="telegramRejectsAnythingElse()" classname="tech.techey.property.owner.OwnerContactNormalizationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

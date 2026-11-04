@@ -49,7 +49,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/listings/**",
                                 "/api/v1/taxonomy/**",
-                                "/api/v1/owners/*/public").permitAll()
+                                "/api/v1/owners/*/public",
+                                "/api/v1/owners/*/avatar").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/listings/*/events",
+                                "/api/v1/listings/*/inquiries").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(
