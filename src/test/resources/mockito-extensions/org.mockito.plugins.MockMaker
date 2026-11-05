@@ -1,0 +1,2 @@
+# No final/static mocking needed; avoids instrumentation of JDK 25 classes.
+mock-maker-subclass

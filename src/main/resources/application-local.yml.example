@@ -1,0 +1,41 @@
+# Local development profile — matches the root docker-compose.yml services.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:55432/roomkh
+    username: roomkh
+    password: roomkh_dev_password
+    hikari:
+      maximum-pool-size: 10
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+app:
+  jwt:
+    # 32+ bytes required for HS256. Override via APP_JWT_SECRET in real environments —
+    # this default is only ever used for local development against docker-compose.
+    secret: ${APP_JWT_SECRET:local-dev-only-secret-please-change-32bytes-min}
+  cors:
+    allowed-origins: http://localhost:3000
+  storage:
+    s3:
+      endpoint: http://localhost:9000
+      bucket: roomkh-local
+      access-key: ${MINIO_ROOT_USER:roomkh}
+      secret-key: ${MINIO_ROOT_PASSWORD:roomkh_dev_password}
+      region: us-east-1
+
+logging:
+  level:
+    tech.techey.property: DEBUG
+    org.hibernate.SQL: WARN
