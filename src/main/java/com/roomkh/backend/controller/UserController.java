@@ -1,6 +1,7 @@
 package com.roomkh.backend.controller;
 
 import com.roomkh.backend.dto.comon.ApiResponse;
+import com.roomkh.backend.dto.user.ChangePasswordRequest;
 import com.roomkh.backend.dto.user.UpdateProfileRequest;
 import com.roomkh.backend.dto.user.UserProfileResponse;
 import com.roomkh.backend.service.UserService;
@@ -47,6 +48,19 @@ public class UserController {
 
         UserProfileResponse updatedProfile = userService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully.", updatedProfile));
+    }
+
+    @PostMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Change current user's password",
+            description = "Requires the current password. The new one must be 8-72 characters.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        Long userId = Long.valueOf(authentication.getName());
+        userService.changePassword(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully.", null));
     }
 
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
