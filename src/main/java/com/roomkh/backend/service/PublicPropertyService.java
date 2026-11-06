@@ -11,7 +11,8 @@ import java.util.List;
 public interface PublicPropertyService {
     Page<PublicPropertyListItemResponse> searchProperties(
             int page, int size, String purpose, String propertyType, 
-            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy);
+            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy,
+            Integer minBedrooms, Integer maxBedrooms, Integer minBathrooms, Integer maxBathrooms);
 
     PublicPropertyDetailResponse getPropertyDetail(Long propertyId);
 

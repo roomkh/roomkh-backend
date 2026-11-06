@@ -384,6 +384,7 @@ public class SellerPropertyServiceImpl implements SellerPropertyService {
                 .pending(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.PENDING))
                 .draft(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.DRAFT))
                 .soldRented(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.SOLD_RENTED))
+                .rejected(propertyRepository.countBySeller_IdAndStatus(sellerId, PropertyStatus.REJECTED))
                 .build();
     }
 

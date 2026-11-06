@@ -181,8 +181,9 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
     @Transactional(readOnly = true)
     public Page<PublicPropertyListItemResponse> searchProperties(
             int page, int size, String purpose, String propertyType, 
-            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy) {
-            
+            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy,
+            Integer minBedrooms, Integer maxBedrooms, Integer minBathrooms, Integer maxBathrooms) {
+
         if (page < 1) {
             throw new BadRequestException("page must be at least 1.");
         }
@@ -196,7 +197,8 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
         // 2. Build Specification (Status = ACTIVE is enforced inside)
         Specification<Property> spec = PropertySpecification.filterPublicProperties(
-                purpose, propertyType, minPrice, maxPrice, location);
+                purpose, propertyType, minPrice, maxPrice, location,
+                minBedrooms, maxBedrooms, minBathrooms, maxBathrooms);
 
         // 3. Fetch Properties
         Page<Property> propertyPage = propertyRepository.findAll(spec, pageable);
