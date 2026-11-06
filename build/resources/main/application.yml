@@ -4,6 +4,60 @@ spring:
       max-file-size: 5MB
       max-request-size: 105MB
   application:
+<<<<<<< HEAD
+    name: roomkh-backend
+  profiles:
+    active: dev
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+server:
+  port: 8081
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+  refresh-token:
+    expiration-days: ${REFRESH_TOKEN_EXPIRATION_DAYS}
+    session-expiration-hours: 24
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN}
+  security:
+    max-failed-attempts: 5
+    failed-attempt-window-minutes: 15
+    block-duration-hours: 24
+    rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
+  seller-request-rate-limit:
+    max-requests-per-minute: 10
+    hard-flood-requests-per-second: 100
+    max-requests-per-user-per-day: 3
+    ip-block-duration-hours: 24
+    rate-limit-hash-secret: ${RATE_LIMIT_HASH_SECRET}
+
+property-image-storage:
+  provider: ${PROPERTY_IMAGE_STORAGE_PROVIDER:r2}
+  root-path: ${PROPERTY_IMAGE_STORAGE_PATH:uploads}
+  public-url-prefix: /uploads
+
+r2:
+  endpoint: ${R2_ENDPOINT:}
+  access-key: ${R2_ACCESS_KEY:}
+  secret-key: ${R2_SECRET_KEY:}
+  bucket-name: ${R2_BUCKET_NAME:}
+  public-url: ${R2_PUBLIC_URL:${STORAGE_R2_URL:}}
+=======
     name: property
   threads:
     virtual:
@@ -54,3 +108,4 @@ app:
     refresh-token-ttl-days: 30
   cors:
     allowed-origins: http://localhost:3000
+>>>>>>> 61c30e3 (add onwer and improve UI desigin)

@@ -61,7 +61,10 @@ public class OwnerListingController {
             @Valid @RequestPart("listing") CreateListingRequest request,
             @RequestPart(value = "photos", required = false) List<MultipartFile> photos) throws IOException {
         var files = photos == null ? List.<MultipartFile>of() : photos;
-        if (files.size() > 20 || (request.status().equals("PENDING_REVIEW") && files.size() < 3))
+        // Owner posts go live immediately — no admin approval step. PENDING_REVIEW is still accepted
+        // from older clients and treated as "publish".
+        String status = request.status().equals("DRAFT") ? "DRAFT" : "ACTIVE";
+        if (files.size() > 20 || (status.equals("ACTIVE") && files.size() < 3))
             throw ApiException.of(ErrorCode.VALIDATION_ERROR, "photos");
         if (db.queryForObject("SELECT count(*) FROM property_types WHERE id=?", Integer.class, request.propertyTypeId()) != 1)
             throw ApiException.of(ErrorCode.VALIDATION_ERROR, "propertyTypeId");
@@ -76,7 +79,7 @@ public class OwnerListingController {
             """, request.id(), user.getId(), request.title().trim(), request.purpose(), request.propertyTypeId(),
             request.provinceId(), request.address().trim(), request.bedrooms(), request.bathrooms(), request.area(),
             request.price(), request.currency(), request.description().trim(), request.contactPhone().trim(),
-            request.amenities(), request.status());
+            request.amenities(), status);
         if (inserted == 1) {
             for (int i = 0; i < files.size(); i++)
                 db.update("INSERT INTO listing_photos(id,listing_id,position,content_type,content) VALUES (?,?,?,?,?)",
@@ -114,8 +117,10 @@ public class OwnerListingController {
             @RequestPart(value = "photos", required = false) List<MultipartFile> photos) throws IOException {
         var rows = db.queryForList("SELECT status FROM listings WHERE id=? AND owner_id=? FOR UPDATE", id, user.getId());
         if (rows.isEmpty()) throw ApiException.of(ErrorCode.NOT_FOUND);
-        if ("PENDING_REVIEW".equals(rows.getFirst().get("status"))) return ApiResponse.success(owned(id, user.getId()));
-        if (!"DRAFT".equals(rows.getFirst().get("status"))) throw ApiException.of(ErrorCode.CONFLICT, "status");
+        // Retried publish of an already-live listing is a no-op.
+        if ("ACTIVE".equals(rows.getFirst().get("status"))) return ApiResponse.success(owned(id, user.getId()));
+        // PENDING_REVIEW only exists on listings created before auto-publish; let them go live too.
+        if (!Set.of("DRAFT", "PENDING_REVIEW").contains(rows.getFirst().get("status"))) throw ApiException.of(ErrorCode.CONFLICT, "status");
         var files = photos == null ? List.<MultipartFile>of() : photos;
         int existing = db.queryForObject("SELECT count(*) FROM listing_photos WHERE listing_id=?", Integer.class, id);
         if (existing + files.size() < 3 || existing + files.size() > 20)
@@ -124,7 +129,7 @@ public class OwnerListingController {
         for (int i = 0; i < files.size(); i++)
             db.update("INSERT INTO listing_photos(id,listing_id,position,content_type,content) VALUES (?,?,?,?,?)",
                 UUID.randomUUID(), id, existing + i, types.get(i), files.get(i).getBytes());
-        db.update("UPDATE listings SET status='PENDING_REVIEW' WHERE id=? AND owner_id=?", id, user.getId());
+        db.update("UPDATE listings SET status='ACTIVE' WHERE id=? AND owner_id=?", id, user.getId());
         return ApiResponse.success(owned(id, user.getId()));
     }
 

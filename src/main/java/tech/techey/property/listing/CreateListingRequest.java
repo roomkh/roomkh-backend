@@ -19,4 +19,4 @@ public record CreateListingRequest(
         @NotBlank @Size(min = 20, max = 10000) String description,
         @NotBlank @Pattern(regexp = "^[0-9+][0-9 ]{7,20}$") String contactPhone,
         @NotNull @Size(max = 500) @Pattern(regexp = "(WIFI|PARKING|AIR_CONDITIONING|FURNISHED|BALCONY|ELEVATOR)(,(WIFI|PARKING|AIR_CONDITIONING|FURNISHED|BALCONY|ELEVATOR))*|^$") String amenities,
-        @NotNull @Pattern(regexp = "DRAFT|PENDING_REVIEW") String status) {}
+        @NotNull @Pattern(regexp = "DRAFT|PENDING_REVIEW|ACTIVE") String status) {}

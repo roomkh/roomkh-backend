@@ -11,7 +11,9 @@ public class PublicListingQueries {
     static final String SELECT = """
         SELECT l.id, l.title, l.purpose, l.address, l.bedrooms, l.bathrooms,
                l.area, l.price, l.currency, l.description, l.amenities,
-               l.contact_phone AS "contactPhone", l.reviewed_at AS "postedAt",
+               l.contact_phone AS "contactPhone",
+               -- Listings publish without admin review, so reviewed_at is usually null; fall back to creation time.
+               COALESCE(l.reviewed_at, l.created_at) AS "postedAt",
                p.name_km AS "provinceKm", p.name_en AS "provinceEn",
                t.key AS "propertyType", t.name_km AS "typeKm", t.name_en AS "typeEn",
                u.full_name AS "ownerName", u.uuid AS "ownerId",
@@ -24,7 +26,7 @@ public class PublicListingQueries {
     public List<Map<String, Object>> findAll(UUID ownerId) {
         Object[] args = ownerId == null ? new Object[0] : new Object[]{ownerId};
         String ownerFilter = ownerId == null ? "" : " AND u.uuid=?";
-        var listings = db.queryForList(SELECT + ownerFilter + " ORDER BY l.reviewed_at DESC, l.id", args);
+        var listings = db.queryForList(SELECT + ownerFilter + " ORDER BY COALESCE(l.reviewed_at, l.created_at) DESC, l.id", args);
         // One photo metadata query for the whole catalogue; image bytes are fetched separately.
         var photos = db.queryForList("""
             SELECT p.id, p.listing_id FROM listing_photos p JOIN listings l ON l.id=p.listing_id

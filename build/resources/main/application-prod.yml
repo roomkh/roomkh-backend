@@ -1,3 +1,28 @@
+<<<<<<< HEAD
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+=======
 # Production profile — all secrets/hosts come from environment variables set by
 # the deploy pipeline (GitHub Actions -> SSH deploy). Nothing sensitive is literal here.
 spring:
@@ -17,6 +42,7 @@ spring:
     port: ${SMTP_PORT:587}
     username: ${SMTP_USERNAME:}
     password: ${SMTP_PASSWORD:}
+>>>>>>> 61c30e3 (add onwer and improve UI desigin)
     properties:
       mail:
         smtp:
@@ -24,6 +50,29 @@ spring:
           starttls:
             enable: true
 
+<<<<<<< HEAD
+logging:
+  level:
+    org.springframework: WARN
+    com.roomkh.backend: INFO
+
+app:
+  cookie:
+    secure: true
+    same-site: Lax
+  security:
+    trust-proxy-headers: false
+
+  sms:
+    provider: not-configured
+
+property-image-storage:
+  provider: ${PROPERTY_IMAGE_STORAGE_PROVIDER:r2}
+
+roomkh:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+=======
 app:
   jwt:
     secret: ${APP_JWT_SECRET}
@@ -45,3 +94,4 @@ management:
 logging:
   level:
     tech.techey.property: WARN
+>>>>>>> 61c30e3 (add onwer and improve UI desigin)
