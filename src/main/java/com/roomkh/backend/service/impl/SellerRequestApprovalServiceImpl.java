@@ -54,6 +54,9 @@ public class SellerRequestApprovalServiceImpl implements SellerRequestApprovalSe
                     .orElseThrow(() -> new ResourceNotFoundException("SELLER role is not configured."));
 
             owner.setRole(sellerRole);
+            // The frontend's seller area checks seller_status, and the other two
+            // ways of becoming a seller (admin create, guest activation) set it too.
+            owner.setSellerStatus(SellerStatus.APPROVED);
             userRepository.save(owner);
 
             sellerRequest.setStatus(SellerRequestStatus.APPROVED);

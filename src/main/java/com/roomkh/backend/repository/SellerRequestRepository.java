@@ -15,6 +15,8 @@ public interface SellerRequestRepository extends JpaRepository<SellerRequest, Lo
     boolean existsByUser_IdAndStatus(Long userId, SellerRequestStatus status);
     boolean existsByPhoneNumberAndStatus(String phoneNumber, SellerRequestStatus status);
 
+    Optional<SellerRequest> findFirstByUser_IdOrderByCreatedAtDesc(Long userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT sr FROM SellerRequest sr WHERE sr.id = :id")
     Optional<SellerRequest> findByIdForUpdate(@Param("id") Long id);
