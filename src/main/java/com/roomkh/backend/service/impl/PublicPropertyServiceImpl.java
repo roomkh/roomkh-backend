@@ -7,6 +7,7 @@ import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyImageRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.PropertySpecification;
+import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.PublicPropertyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,30 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicSellerProfileResponse getSellerProfile(Long sellerId) {
+        // Only active sellers have a public profile, so this can't be used to look up other accounts.
+        User seller = userRepository.findById(sellerId)
+                .filter(user -> user.getRole() != null && user.getRole().getName() == RoleName.SELLER)
+                .filter(user -> user.getAccountStatus() == AccountStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller not found."));
+
+        List<PublicPropertyListItemResponse> listings = toListItems(
+                propertyRepository.findBySeller_IdAndStatusOrderByCreatedAtDesc(sellerId, PropertyStatus.ACTIVE));
+
+        return PublicSellerProfileResponse.builder()
+                .id(seller.getId())
+                .name(seller.getFullName())
+                .avatarUrl(seller.getAvatarUrl())
+                .phoneNumber(seller.getPhoneNumber())
+                .joinedAt(seller.getCreatedAt())
+                .listingCount(listings.size())
+                .listings(listings)
+                .build();
+    }
 
 
     @Override
@@ -181,8 +206,9 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
     @Transactional(readOnly = true)
     public Page<PublicPropertyListItemResponse> searchProperties(
             int page, int size, String purpose, String propertyType, 
-            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy) {
-            
+            BigDecimal minPrice, BigDecimal maxPrice, String location, String sortBy,
+            Integer minBedrooms, Integer maxBedrooms, Integer minBathrooms, Integer maxBathrooms) {
+
         if (page < 1) {
             throw new BadRequestException("page must be at least 1.");
         }
@@ -196,7 +222,8 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
         // 2. Build Specification (Status = ACTIVE is enforced inside)
         Specification<Property> spec = PropertySpecification.filterPublicProperties(
-                purpose, propertyType, minPrice, maxPrice, location);
+                purpose, propertyType, minPrice, maxPrice, location,
+                minBedrooms, maxBedrooms, minBathrooms, maxBathrooms);
 
         // 3. Fetch Properties
         Page<Property> propertyPage = propertyRepository.findAll(spec, pageable);

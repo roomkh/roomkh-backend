@@ -18,7 +18,11 @@ public class PropertySpecification {
             String propertyType,
             BigDecimal minPrice,
             BigDecimal maxPrice,
-            String location) {
+            String location,
+            Integer minBedrooms,
+            Integer maxBedrooms,
+            Integer minBathrooms,
+            Integer maxBathrooms) {
 
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -52,6 +56,20 @@ public class PropertySpecification {
                 Predicate communeMatch = criteriaBuilder.like(criteriaBuilder.lower(root.get("commune")), searchPattern);
 
                 predicates.add(criteriaBuilder.or(provinceMatch, districtMatch, communeMatch));
+            }
+
+            // Room counts: "2 beds" = min 2 + max 2, "3+ beds" = min 3 only.
+            if (minBedrooms != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bedrooms"), minBedrooms));
+            }
+            if (maxBedrooms != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bedrooms"), maxBedrooms));
+            }
+            if (minBathrooms != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bathrooms"), minBathrooms));
+            }
+            if (maxBathrooms != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bathrooms"), maxBathrooms));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

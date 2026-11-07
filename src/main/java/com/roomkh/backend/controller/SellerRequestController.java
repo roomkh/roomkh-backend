@@ -13,8 +13,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,6 +40,20 @@ public class SellerRequestController {
         SellerRequestResponse response = sellerRequestService.submit(request, authenticatedUserId, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Seller request submitted successfully.", response));
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Get my latest seller request",
+            description = "Returns the signed-in user's most recent seller request so the website can show its status. "
+                    + "data is null when the user has never sent one.")
+    public ResponseEntity<ApiResponse<SellerRequestResponse>> getMine() {
+        Long authenticatedUserId = resolveAuthenticatedUserId();
+        if (authenticatedUserId == null) {
+            // SecurityConfig already requires a login for this path; this is a safety net.
+            throw new BadCredentialsException("Authentication is required.");
+        }
+        SellerRequestResponse response = sellerRequestService.findLatestForUser(authenticatedUserId);
+        return ResponseEntity.ok(ApiResponse.success("Seller request retrieved successfully.", response));
     }
 
     private Long resolveAuthenticatedUserId() {

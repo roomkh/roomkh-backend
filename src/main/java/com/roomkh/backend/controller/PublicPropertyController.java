@@ -116,10 +116,15 @@ public class PublicPropertyController {
             @Parameter(description = "Minimum price") @RequestParam(name = "min_price", required = false) BigDecimal minPrice,
             @Parameter(description = "Maximum price") @RequestParam(name = "max_price", required = false) BigDecimal maxPrice,
             @Parameter(description = "Search by province, district, or commune") @RequestParam(required = false) String location,
-            @Parameter(description = "Sort order: newest, price_asc, price_desc") @RequestParam(name = "sort_by", defaultValue = "newest") String sortBy) {
+            @Parameter(description = "Sort order: newest, price_asc, price_desc") @RequestParam(name = "sort_by", defaultValue = "newest") String sortBy,
+            @Parameter(description = "Minimum bedrooms") @RequestParam(name = "min_bedrooms", required = false) Integer minBedrooms,
+            @Parameter(description = "Maximum bedrooms") @RequestParam(name = "max_bedrooms", required = false) Integer maxBedrooms,
+            @Parameter(description = "Minimum bathrooms") @RequestParam(name = "min_bathrooms", required = false) Integer minBathrooms,
+            @Parameter(description = "Maximum bathrooms") @RequestParam(name = "max_bathrooms", required = false) Integer maxBathrooms) {
 
         Page<PublicPropertyListItemResponse> resultPage = publicPropertyService.searchProperties(
-                page, size, purpose, propertyType, minPrice, maxPrice, location, sortBy);
+                page, size, purpose, propertyType, minPrice, maxPrice, location, sortBy,
+                minBedrooms, maxBedrooms, minBathrooms, maxBathrooms);
                 
         PageMeta meta = PageMeta.from(resultPage);
 

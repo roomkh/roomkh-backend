@@ -17,7 +17,9 @@ import com.roomkh.backend.service.SellerRequestRateLimitService;
 import com.roomkh.backend.service.SellerRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,12 +89,21 @@ public class SellerRequestServiceImpl implements SellerRequestService {
     @Override
     public Page<SellerRequestSummaryResponse> list(SellerRequestStatus status, String keyword, Pageable pageable) {
 
+        // Newest requests first unless the caller asked for a specific order.
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+
         if (status == null && (keyword == null || keyword.isBlank())) {
             return sellerRequestRepository.findAll(pageable)
                     .map(sellerRequestMapper::toSummaryResponse);
         }
 
-        Specification<SellerRequest> spec = Specification.where((Specification<SellerRequest>) null);
+        // Spring Data 4 rejects Specification.where(null), which made every status
+        // or keyword filter fail with "Specification must not be null". Start from
+        // an always-true predicate instead.
+        Specification<SellerRequest> spec = (root, query, cb) -> cb.conjunction();
 
         if (status != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
@@ -117,6 +128,14 @@ public class SellerRequestServiceImpl implements SellerRequestService {
         SellerRequest sellerRequest = sellerRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller request not found."));
         return sellerRequestMapper.toResponse(sellerRequest);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SellerRequestResponse findLatestForUser(Long userId) {
+        return sellerRequestRepository.findFirstByUser_IdOrderByCreatedAtDesc(userId)
+                .map(sellerRequestMapper::toResponse)
+                .orElse(null);
     }
 
     private String normalizeEmail(String rawEmail) {

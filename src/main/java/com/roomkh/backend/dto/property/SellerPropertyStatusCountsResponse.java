@@ -15,4 +15,5 @@ public class SellerPropertyStatusCountsResponse {
     private long pending;
     private long draft;
     private long soldRented;
+    private long rejected;
 }

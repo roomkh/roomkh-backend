@@ -8,4 +8,7 @@ public interface UserService {
     UserProfileResponse getCurrentUserProfile(Long userId);
     UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request);
     UserProfileResponse uploadAvatar(Long userId, MultipartFile file);
+
+    /** Changes the signed-in user's password after checking the current one. */
+    void changePassword(Long userId, com.roomkh.backend.dto.user.ChangePasswordRequest request);
 }

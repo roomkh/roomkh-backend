@@ -11,4 +11,7 @@ public interface SellerRequestService {
     SellerRequestResponse submit(CreateSellerRequest request, Long authenticatedUserId, String clientIp);
     Page<SellerRequestSummaryResponse> list(SellerRequestStatus status, String keyword, Pageable pageable);
     SellerRequestResponse getById(Long id);
+
+    /** The signed-in user's most recent seller request, or null if they never sent one. */
+    SellerRequestResponse findLatestForUser(Long userId);
 }
