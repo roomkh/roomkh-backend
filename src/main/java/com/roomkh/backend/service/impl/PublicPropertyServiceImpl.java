@@ -7,6 +7,7 @@ import com.roomkh.backend.exception.ResourceNotFoundException;
 import com.roomkh.backend.repository.PropertyImageRepository;
 import com.roomkh.backend.repository.PropertyRepository;
 import com.roomkh.backend.repository.PropertySpecification;
+import com.roomkh.backend.repository.UserRepository;
 import com.roomkh.backend.service.PublicPropertyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,30 @@ public class PublicPropertyServiceImpl implements PublicPropertyService {
 
     private final PropertyRepository propertyRepository;
     private final PropertyImageRepository propertyImageRepository;
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicSellerProfileResponse getSellerProfile(Long sellerId) {
+        // Only active sellers have a public profile, so this can't be used to look up other accounts.
+        User seller = userRepository.findById(sellerId)
+                .filter(user -> user.getRole() != null && user.getRole().getName() == RoleName.SELLER)
+                .filter(user -> user.getAccountStatus() == AccountStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller not found."));
+
+        List<PublicPropertyListItemResponse> listings = toListItems(
+                propertyRepository.findBySeller_IdAndStatusOrderByCreatedAtDesc(sellerId, PropertyStatus.ACTIVE));
+
+        return PublicSellerProfileResponse.builder()
+                .id(seller.getId())
+                .name(seller.getFullName())
+                .avatarUrl(seller.getAvatarUrl())
+                .phoneNumber(seller.getPhoneNumber())
+                .joinedAt(seller.getCreatedAt())
+                .listingCount(listings.size())
+                .listings(listings)
+                .build();
+    }
 
 
     @Override
